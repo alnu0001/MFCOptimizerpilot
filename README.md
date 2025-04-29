@@ -1,1 +1,134 @@
 # MFCOptimizerpilot
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MFC Optimizer</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body { font-family: 'Times New Roman', Times, serif; margin: 30px; background-color: #f9f9f9; color: #000; }
+  body.dark-mode { background-color: #121212; color: #fff; }
+  button, input, textarea { margin: 5px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
+  #output, #status, #history, #chat-response { margin-top: 20px; padding: 15px; border-radius: 10px; border: 1px solid #ccc; background: #fff; }
+  body.dark-mode #output, body.dark-mode #status, body.dark-mode #history, body.dark-mode #chat-response { background: #1e1e1e; }
+</style>
+</head>
+<body>
+
+<h1>Microbial Fuel Cell Optimizer</h1>
+
+<button onclick="toggleDarkMode()">Dark Mode</button>
+<button onclick="clearHistory()">Clear History</button>
+
+<h2>Manual Input</h2>
+<input type="number" id="inputCE" placeholder="Coulombic Efficiency (%)" step="0.01" />
+<input type="number" id="inputCOD" placeholder="COD Removal (%)" step="0.01" />
+<input type="text" id="inputMicrobe" placeholder="Microbe Type" />
+<input type="text" id="inputSubstrate" placeholder="Substrate Composition" />
+<input type="text" id="inputEnzyme" placeholder="Enzyme Type" />
+<textarea id="inputComment" placeholder="Optional Comment..." rows="2" cols="50"></textarea><br>
+<button onclick="optimizeConfig()">Optimize Configuration</button>
+
+<div id="status">Status: Awaiting Input...</div>
+<div id="output"></div>
+<div id="history"><h2>Optimization History</h2><ul id="historyList"></ul></div>
+
+<canvas id="predictionChart" width="400" height="300"></canvas>
+<canvas id="lineChart" width="400" height="300"></canvas>
+
+<div class="chat-section">
+  <h2>Ask the MFC Research Advisor</h2>
+  <textarea id="chatInput" placeholder="Ask a question about MFC performance..." rows="4" cols="50"></textarea><br>
+  <button onclick="askQuestion()">Ask</button>
+  <div id="chat-response"></div>
+</div>
+
+<script>
+let history = [];
+let chart, lineChart;
+let conversation = [];
+
+function toggleDarkMode() {
+  document.body.classList.toggle('dark-mode');
+}
+
+function clearHistory() {
+  history = [];
+  updateHistory();
+  updateCharts();
+  document.getElementById('status').innerText = 'History cleared.';
+}
+
+function optimizeConfig() {
+  const ce = parseFloat(document.getElementById('inputCE')?.value || 0);
+  const cod = parseFloat(document.getElementById('inputCOD')?.value || 0);
+  const microbe = document.getElementById('inputMicrobe')?.value.trim() || '';
+  const substrate = document.getElementById('inputSubstrate')?.value.trim() || '';
+  const enzyme = document.getElementById('inputEnzyme')?.value.trim() || '';
+  const comment = document.getElementById('inputComment').value;
+  const predicted = (Math.random() * 8 + 2).toFixed(2);
+  const now = new Date().toLocaleString();
+  history.push({ ce, cod, microbe, substrate, enzyme, predicted, time: now, comment });
+  if (history.length > 20) history.shift();
+  updateHistory();
+  updateCharts();
+  document.getElementById('status').innerText = 'Optimization completed.';
+}
+
+function updateHistory() {
+  const list = document.getElementById('historyList');
+  list.innerHTML = history.map((h, i) => `<li>Run ${i+1}: ${h.predicted} W/m² (CE: ${h.ce}%, COD: ${h.cod}%)</li>`).join('');
+}
+
+function updateCharts() {
+  if (!document.getElementById('predictionChart') || !document.getElementById('lineChart')) return;
+  const ctx = document.getElementById('predictionChart').getContext('2d');
+  const ctxLine = document.getElementById('lineChart').getContext('2d');
+  if (chart) chart.destroy();
+  if (lineChart) lineChart.destroy();
+
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: history.map((_, idx) => `Run ${idx + 1}`),
+      datasets: [{
+        label: 'Predicted Power Density (W/m²)',
+        data: history.map(h => h.predicted),
+        backgroundColor: history.map(h => h.predicted > 5 ? 'gold' : 'rgba(54, 162, 235, 0.7)')
+      }]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+  });
+
+  lineChart = new Chart(ctxLine, {
+    type: 'line',
+    data: {
+      labels: history.map((_, idx) => `Run ${idx + 1}`),
+      datasets: [{
+        label: 'Power Density Trend',
+        data: history.map(h => h.predicted),
+        borderColor: 'rgba(75, 192, 192, 1)',
+        tension: 0.2
+      }]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+  });
+}
+
+function askQuestion() {
+  const input = document.getElementById('chatInput').value.trim();
+  if (!input) {
+    alert('Please type your question.');
+    return;
+  }
+  conversation.push(input);
+  const lastAnswer = `Insightful Response: In microbial fuel cells (MFCs), maximizing power density involves enhancing Coulombic efficiency, optimizing COD removal, using electrogenic bacteria (e.g., Geobacter), and maintaining ideal environmental conditions.`;
+  document.getElementById('chat-response').innerText += "\nUser: " + input + "\nMFC Research Advisor: " + lastAnswer + "\n";
+  document.getElementById('chatInput').value = '';
+}
+</script>
+
+</body>
+</html>
