@@ -1,134 +1,154 @@
-# MFCOptimizerpilot
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MFC Optimizer</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-  body { font-family: 'Times New Roman', Times, serif; margin: 30px; background-color: #f9f9f9; color: #000; }
-  body.dark-mode { background-color: #121212; color: #fff; }
-  button, input, textarea { margin: 5px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
-  #output, #status, #history, #chat-response { margin-top: 20px; padding: 15px; border-radius: 10px; border: 1px solid #ccc; background: #fff; }
-  body.dark-mode #output, body.dark-mode #status, body.dark-mode #history, body.dark-mode #chat-response { background: #1e1e1e; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MFC Optimizer Pro</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f4f4;
+      color: #111;
+      margin: 0;
+      padding: 20px;
+    }
+    header {
+      background-color: #2e3b4e;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 24px;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .panel {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, select, button, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    canvas {
+      margin-top: 20px;
+    }
+  </style>
 </head>
 <body>
+  <header>Microbial Fuel Cell Optimizer Pro</header>
+  <div class="container">
+    <div class="panel">
+      <h2>Input Parameters</h2>
+      <label for="inputCE">Coulombic Efficiency (%)</label>
+      <input type="number" id="inputCE" value="70">
 
-<h1>Microbial Fuel Cell Optimizer</h1>
+      <label for="inputCOD">COD Removal (%)</label>
+      <input type="number" id="inputCOD" value="70">
 
-<button onclick="toggleDarkMode()">Dark Mode</button>
-<button onclick="clearHistory()">Clear History</button>
+      <label for="inputMicrobe">Microbe Type</label>
+      <input type="text" id="inputMicrobe" value="Geobacter">
 
-<h2>Manual Input</h2>
-<input type="number" id="inputCE" placeholder="Coulombic Efficiency (%)" step="0.01" />
-<input type="number" id="inputCOD" placeholder="COD Removal (%)" step="0.01" />
-<input type="text" id="inputMicrobe" placeholder="Microbe Type" />
-<input type="text" id="inputSubstrate" placeholder="Substrate Composition" />
-<input type="text" id="inputEnzyme" placeholder="Enzyme Type" />
-<textarea id="inputComment" placeholder="Optional Comment..." rows="2" cols="50"></textarea><br>
-<button onclick="optimizeConfig()">Optimize Configuration</button>
+      <label for="inputSubstrate">Substrate Composition</label>
+      <input type="text" id="inputSubstrate" value="Starch">
 
-<div id="status">Status: Awaiting Input...</div>
-<div id="output"></div>
-<div id="history"><h2>Optimization History</h2><ul id="historyList"></ul></div>
+      <label for="inputEnzyme">Enzyme Type</label>
+      <input type="text" id="inputEnzyme" value="mtrC">
 
-<canvas id="predictionChart" width="400" height="300"></canvas>
-<canvas id="lineChart" width="400" height="300"></canvas>
+      <label for="inputVoltage">Cell Voltage (V)</label>
+      <input type="number" step="0.01" id="inputVoltage" value="0.4">
 
-<div class="chat-section">
-  <h2>Ask the MFC Research Advisor</h2>
-  <textarea id="chatInput" placeholder="Ask a question about MFC performance..." rows="4" cols="50"></textarea><br>
-  <button onclick="askQuestion()">Ask</button>
-  <div id="chat-response"></div>
-</div>
+      <button onclick="computePowerOutput()">Compute Power Output</button>
+      <div id="outputPower"></div>
+    </div>
 
-<script>
-let history = [];
-let chart, lineChart;
-let conversation = [];
+    <div class="panel">
+      <h2>Power Output Heatmap</h2>
+      <canvas id="heatmap"></canvas>
+    </div>
+  </div>
 
-function toggleDarkMode() {
-  document.body.classList.toggle('dark-mode');
-}
+  <script>
+    function computePowerOutput() {
+      const CE = parseFloat(document.getElementById('inputCE').value);
+      const COD = parseFloat(document.getElementById('inputCOD').value);
+      const E = parseFloat(document.getElementById('inputVoltage').value);
+      const COD_input = 20; // g/m^2/day
 
-function clearHistory() {
-  history = [];
-  updateHistory();
-  updateCharts();
-  document.getElementById('status').innerText = 'History cleared.';
-}
+      const COD_removed = COD_input * (COD / 100);
+      const power = COD_removed * 0.00834 * 96485 * (CE / 100) * (E / 86400);
+      const roundedPower = power.toFixed(2);
 
-function optimizeConfig() {
-  const ce = parseFloat(document.getElementById('inputCE')?.value || 0);
-  const cod = parseFloat(document.getElementById('inputCOD')?.value || 0);
-  const microbe = document.getElementById('inputMicrobe')?.value.trim() || '';
-  const substrate = document.getElementById('inputSubstrate')?.value.trim() || '';
-  const enzyme = document.getElementById('inputEnzyme')?.value.trim() || '';
-  const comment = document.getElementById('inputComment').value;
-  const predicted = (Math.random() * 8 + 2).toFixed(2);
-  const now = new Date().toLocaleString();
-  history.push({ ce, cod, microbe, substrate, enzyme, predicted, time: now, comment });
-  if (history.length > 20) history.shift();
-  updateHistory();
-  updateCharts();
-  document.getElementById('status').innerText = 'Optimization completed.';
-}
+      document.getElementById('outputPower').innerText = `Estimated Power Output: ${roundedPower} W/m²`;
+      generateHeatmap();
+    }
 
-function updateHistory() {
-  const list = document.getElementById('historyList');
-  list.innerHTML = history.map((h, i) => `<li>Run ${i+1}: ${h.predicted} W/m² (CE: ${h.ce}%, COD: ${h.cod}%)</li>`).join('');
-}
+    function generateHeatmap() {
+      const ctx = document.getElementById('heatmap').getContext('2d');
+      if (window.heatmapChart) window.heatmapChart.destroy();
 
-function updateCharts() {
-  if (!document.getElementById('predictionChart') || !document.getElementById('lineChart')) return;
-  const ctx = document.getElementById('predictionChart').getContext('2d');
-  const ctxLine = document.getElementById('lineChart').getContext('2d');
-  if (chart) chart.destroy();
-  if (lineChart) lineChart.destroy();
+      const E = parseFloat(document.getElementById('inputVoltage').value);
+      const COD_input = 20;
 
-  chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: history.map((_, idx) => `Run ${idx + 1}`),
-      datasets: [{
-        label: 'Predicted Power Density (W/m²)',
-        data: history.map(h => h.predicted),
-        backgroundColor: history.map(h => h.predicted > 5 ? 'gold' : 'rgba(54, 162, 235, 0.7)')
-      }]
-    },
-    options: { scales: { y: { beginAtZero: true } } }
-  });
+      const data = [];
+      const labelsX = [];
+      const labelsY = [];
 
-  lineChart = new Chart(ctxLine, {
-    type: 'line',
-    data: {
-      labels: history.map((_, idx) => `Run ${idx + 1}`),
-      datasets: [{
-        label: 'Power Density Trend',
-        data: history.map(h => h.predicted),
-        borderColor: 'rgba(75, 192, 192, 1)',
-        tension: 0.2
-      }]
-    },
-    options: { scales: { y: { beginAtZero: true } } }
-  });
-}
+      for (let ce = 10; ce <= 100; ce += 10) {
+        labelsX.push(ce);
+      }
+      for (let cod = 10; cod <= 100; cod += 10) {
+        labelsY.push(cod);
+        const row = [];
+        for (let ce of labelsX) {
+          const COD_removed = COD_input * (cod / 100);
+          const power = COD_removed * 0.00834 * 96485 * (ce / 100) * (E / 86400);
+          row.push(parseFloat(power.toFixed(2)));
+        }
+        data.push(row);
+      }
 
-function askQuestion() {
-  const input = document.getElementById('chatInput').value.trim();
-  if (!input) {
-    alert('Please type your question.');
-    return;
-  }
-  conversation.push(input);
-  const lastAnswer = `Insightful Response: In microbial fuel cells (MFCs), maximizing power density involves enhancing Coulombic efficiency, optimizing COD removal, using electrogenic bacteria (e.g., Geobacter), and maintaining ideal environmental conditions.`;
-  document.getElementById('chat-response').innerText += "\nUser: " + input + "\nMFC Research Advisor: " + lastAnswer + "\n";
-  document.getElementById('chatInput').value = '';
-}
-</script>
+      const heatData = {
+        labels: labelsX.map(ce => ce + '% CE'),
+        datasets: labelsY.map((cod, rowIndex) => ({
+          label: cod + '% COD',
+          data: data[rowIndex],
+          borderWidth: 1,
+          fill: false
+        }))
+      };
 
+      window.heatmapChart = new Chart(ctx, {
+        type: 'line',
+        data: heatData,
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true },
+            x: { title: { display: true, text: 'Coulombic Efficiency (%)' } }
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: 'Power Output (W/m²) vs CE and COD Removal'
+            }
+          }
+        }
+      });
+    }
+
+    window.onload = computePowerOutput;
+  </script>
 </body>
 </html>
