@@ -2,258 +2,186 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MFC Simulator</title>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MFC Simulator Pro</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix"></script>
   <style>
     body {
-      font-family: 'Press Start 2P', cursive;
+      font-family: 'Segoe UI', sans-serif;
       background-color: #f4f4f4;
-      color: #111;
       margin: 0;
       padding: 20px;
     }
-    h1, h2 {
+    header {
+      background-color: #2e3b4e;
+      color: white;
+      padding: 15px;
       text-align: center;
+      font-size: 24px;
     }
     .container {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
+      display: grid;
+      grid-template-columns: 1fr 2fr;
       gap: 20px;
+      margin-top: 20px;
     }
     .panel {
       background: white;
       padding: 20px;
       border-radius: 8px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      width: 360px;
     }
-    label {
+    label, select, input, button {
       display: block;
+      width: 100%;
       margin-top: 10px;
     }
-    input, select, button {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-family: monospace;
-    }
     canvas {
+      margin-top: 20px;
       max-width: 100%;
-      margin-top: 15px;
-    }
-    button {
-      background-color: #4CAF50;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>MFC Simulator</h1>
+  <header>Microbial Fuel Cell Simulator Pro</header>
   <div class="container">
     <div class="panel">
       <h2>Input Parameters</h2>
       <label>Coulombic Efficiency (%)</label>
-      <input type="number" id="ce" value="70" min="0" max="100">
+      <input id="inputCE" type="number" value="70" />
+
       <label>COD Removal (%)</label>
-      <input type="number" id="cod" value="70" min="0" max="100">
-      <label>Microbe</label>
-      <select id="microbe">
-        <option>Shewanella oneidensis</option>
-        <option>Pseudomonas aeruginosa</option>
-        <option>Bacillus piscis</option>
-        <option>Halophilic consortia</option>
-        <option>Saccharomyces cerevisiae</option>
-        <option>Acetivibrio thermocellus</option>
-        <option>Geobacter sulfurreducens</option>
-      </select>
-      <label>Substrate</label>
-      <select id="substrate">
-        <option>acetate</option>
-        <option>molasses wastewater</option>
-        <option>slaughterhouse waste</option>
-        <option>brewery effluent</option>
-        <option>lignocellulose</option>
-      </select>
-      <label>Electrode</label>
-      <select id="electrode">
-        <option>carbon cloth</option>
-        <option>PANI nanofiber</option>
-        <option>3D-printed gyroid</option>
-        <option>Fe3O4-PANI composite</option>
-        <option>Ni-silicide nanowires</option>
-      </select>
-      <label>Enzyme</label>
-      <input type="text" id="enzyme" placeholder="e.g. mtrC">
+      <input id="inputCOD" type="number" value="70" />
+
+      <label>Microbe Type</label>
+      <input list="microbes" id="inputMicrobe" />
+      <datalist id="microbes">
+        <option value="Geobacter" />
+        <option value="Shewanella" />
+        <option value="Pseudomonas aeruginosa" />
+        <option value="Yeast" />
+        <option value="Best option" />
+      </datalist>
+
+      <label>Substrate Composition</label>
+      <input list="substrates" id="inputSubstrate" />
+      <datalist id="substrates">
+        <option value="Starch" />
+        <option value="Molasses" />
+        <option value="Acetate" />
+        <option value="Best option" />
+      </datalist>
+
+      <label>Enzyme Type</label>
+      <input id="inputEnzyme" type="text" value="mtrC" />
+
       <label>Cell Voltage (V)</label>
-      <input type="number" step="0.01" id="voltage" value="0.4">
-      <label>Duration (hours)</label>
-      <input type="number" id="duration" value="24" min="1" max="168">
-      <button onclick="simulate()">Run Simulation</button>
-      <button onclick="saveInputs()">💾 Save</button>
-      <button onclick="loadInputs()">📂 Load</button>
+      <input id="inputVoltage" type="number" value="0.4" step="0.01" />
+
+      <label>Simulation Duration</label>
+      <select id="inputTimeScale">
+        <option value="24">24 Hours</option>
+        <option value="168">7 Days</option>
+        <option value="720">30 Days</option>
+      </select>
+
+      <button onclick="simulateMFC()">Simulate</button>
+      <button onclick="loadPrevious()">Load Previous</button>
+
+      <div id="numericOutput"></div>
     </div>
+
     <div class="panel">
-      <h2>Results</h2>
-      <canvas id="powerChart"></canvas>
-      <canvas id="voltageChart"></canvas>
-      <canvas id="currentChart"></canvas>
-      <canvas id="resistanceChart"></canvas>
-      <canvas id="pHChart"></canvas>
-    </div>
-    <div class="panel">
-      <h2>CE × COD Heatmap</h2>
-      <canvas id="heatmapChart" width="350" height="350"></canvas>
+      <h2>Simulation Graphs</h2>
+      <canvas id="chartPower"></canvas>
+      <canvas id="chartVoltage"></canvas>
+      <canvas id="chartResistance"></canvas>
     </div>
   </div>
 
-<script>
-const FARADAY = 96485;
-const COD_input = 20;
-const e_per_g_COD = 0.00834;
-const I0 = {
-  "Shewanella oneidensis": 3.0,
-  "Pseudomonas aeruginosa": 0.2,
-  "Bacillus piscis": 0.12,
-  "Halophilic consortia": 0.56,
-  "Saccharomyces cerevisiae": 0.10,
-  "Acetivibrio thermocellus": 0.16,
-  "Geobacter sulfurreducens": 1.0
-};
+  <script>
+    const Faraday = 96485, e_per_g_COD = 0.00834, COD_input = 20;
 
-function simulate() {
-  const CE = parseFloat(document.getElementById("ce").value) / 100;
-  const COD = parseFloat(document.getElementById("cod").value) / 100;
-  const microbe = document.getElementById("microbe").value;
-  const voltage = parseFloat(document.getElementById("voltage").value);
-  const enzyme = document.getElementById("enzyme").value.toLowerCase();
-  const hours = parseInt(document.getElementById("duration").value);
-
-  let I_base = I0[microbe] || 0.1;
-  if (enzyme === 'mtrc') I_base *= 1.2;
-
-  const time = [], power = [], current = [], voltage_arr = [], resistance = [], pH = [];
-  for (let t = 0; t <= hours; t++) {
-    const frac = 1 - (1 - COD) * (t / hours);
-    const I = I_base * frac * CE;
-    const V = voltage * frac;
-    const P = I * V;
-    const R = I > 0 ? (V / I) : null;
-    const pH_val = 7 - 2 * (1 - frac);
-
-    time.push(t);
-    power.push(P.toFixed(3));
-    current.push(I.toFixed(3));
-    voltage_arr.push(V.toFixed(3));
-    resistance.push(R ? R.toFixed(2) : null);
-    pH.push(pH_val.toFixed(2));
-  }
-
-  chartLine("powerChart", "Power (W/m²)", time, power);
-  chartLine("voltageChart", "Voltage (V)", time, voltage_arr);
-  chartLine("currentChart", "Current (A)", time, current);
-  chartLine("resistanceChart", "Internal Resistance (Ω)", time, resistance);
-  chartLine("pHChart", "Anode pH", time, pH);
-  heatmap();
-}
-
-function chartLine(id, label, x, y) {
-  new Chart(document.getElementById(id), {
-    type: 'line',
-    data: {
-      labels: x,
-      datasets: [{
-        label,
-        data: y,
-        borderColor: 'blue',
-        fill: false
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { title: { display: true, text: 'Time (h)' } },
-        y: { title: { display: true, text: label }, beginAtZero: true }
+    function bestMatch(type, value) {
+      if (value.toLowerCase().includes('best')) {
+        return type === 'microbe' ? 'Shewanella' :
+               type === 'substrate' ? 'Acetate' :
+               'mtrC';
       }
+      return value;
     }
-  });
-}
 
-function heatmap() {
-  const ctx = document.getElementById('heatmapChart').getContext('2d');
-  const data = [];
-  for (let ce = 10; ce <= 100; ce += 10) {
-    for (let cod = 10; cod <= 100; cod += 10) {
-      const COD_removed = COD_input * (cod / 100);
-      const CE_fraction = ce / 100;
-      const P = COD_removed * e_per_g_COD * FARADAY * CE_fraction * (0.4 / 86400);
-      data.push({x: ce, y: cod, v: parseFloat(P.toFixed(2))});
+    function simulateMFC() {
+      const CE = parseFloat(document.getElementById('inputCE').value);
+      const COD = parseFloat(document.getElementById('inputCOD').value);
+      const E = parseFloat(document.getElementById('inputVoltage').value);
+      const hours = parseInt(document.getElementById('inputTimeScale').value);
+      const microbe = bestMatch('microbe', document.getElementById('inputMicrobe').value);
+      const substrate = bestMatch('substrate', document.getElementById('inputSubstrate').value);
+      const enzyme = document.getElementById('inputEnzyme').value;
+
+      const COD_removed = COD_input * (COD / 100);
+      const mol_e = COD_removed * e_per_g_COD;
+      const total_charge = mol_e * Faraday * (CE / 100);
+      const power = (total_charge * E / (3600 * hours)).toFixed(3);
+      const voltage_drop = (E * (1 - CE / 100)).toFixed(3);
+      const internal_resistance = ((E - voltage_drop) / (total_charge / (3600 * hours))).toFixed(2);
+
+      document.getElementById("numericOutput").innerHTML =
+        `<strong>Power Output:</strong> ${power} W/m²<br>
+         <strong>Voltage Drop:</strong> ${voltage_drop} V<br>
+         <strong>Internal Resistance:</strong> ${internal_resistance} Ω<br>
+         <strong>Microbe:</strong> ${microbe}, <strong>Substrate:</strong> ${substrate}, <strong>Enzyme:</strong> ${enzyme}`;
+
+      localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
+      renderCharts(hours, power, voltage_drop, internal_resistance);
     }
-  }
 
-  new Chart(ctx, {
-    type: 'matrix',
-    data: {
-      datasets: [{
-        label: "Power (W/m²)",
-        data,
-        backgroundColor(ctx) {
-          const value = ctx.dataset.data[ctx.dataIndex].v;
-          const alpha = Math.min(1, value / 0.1);
-          return `rgba(0, 128, 255, ${alpha})`;
+    function loadPrevious() {
+      const data = JSON.parse(localStorage.getItem('lastSim'));
+      if (!data) return alert("No previous data.");
+      document.getElementById('inputCE').value = data.CE;
+      document.getElementById('inputCOD').value = data.COD;
+      document.getElementById('inputVoltage').value = data.E;
+      document.getElementById('inputTimeScale').value = data.hours;
+      document.getElementById('inputMicrobe').value = data.microbe;
+      document.getElementById('inputSubstrate').value = data.substrate;
+      document.getElementById('inputEnzyme').value = data.enzyme;
+      document.getElementById("numericOutput").innerHTML =
+        `<strong>Power Output:</strong> ${data.power} W/m²<br>
+         <strong>Voltage Drop:</strong> ${data.voltage_drop} V<br>
+         <strong>Internal Resistance:</strong> ${data.internal_resistance} Ω<br>
+         <strong>Microbe:</strong> ${data.microbe}, <strong>Substrate:</strong> ${data.substrate}, <strong>Enzyme:</strong> ${data.enzyme}`;
+      renderCharts(data.hours, data.power, data.voltage_drop, data.internal_resistance);
+    }
+
+    function renderCharts(hours, power, voltage_drop, resistance) {
+      const labels = Array.from({ length: hours }, (_, i) => i + 1);
+      const powers = labels.map(() => parseFloat(power));
+      const voltages = labels.map(() => parseFloat(voltage_drop));
+      const resistances = labels.map(() => parseFloat(resistance));
+
+      const config = (label, data, color) => ({
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label,
+            data,
+            borderColor: color,
+            fill: false
+          }]
         },
-        width: () => 30,
-        height: () => 30
-      }]
-    },
-    options: {
-      scales: {
-        x: { title: { display: true, text: 'CE (%)' }, min: 0, max: 110 },
-        y: { title: { display: true, text: 'COD (%)' }, min: 0, max: 110 }
-      },
-      plugins: {
-        tooltip: {
-          callbacks: {
-            label: ctx => `Power: ${ctx.raw.v} W/m²`
-          }
-        },
-        title: {
-          display: true,
-          text: 'Power Output Heatmap'
+        options: {
+          responsive: true,
+          scales: { x: { title: { display: true, text: 'Time (h)' } } }
         }
-      }
+      });
+
+      new Chart(document.getElementById('chartPower'), config("Power Output (W/m²)", powers, 'green'));
+      new Chart(document.getElementById('chartVoltage'), config("Voltage Drop (V)", voltages, 'red'));
+      new Chart(document.getElementById('chartResistance'), config("Internal Resistance (Ω)", resistances, 'blue'));
     }
-  });
-}
-
-function saveInputs() {
-  const inputs = {
-    ce: document.getElementById("ce").value,
-    cod: document.getElementById("cod").value,
-    microbe: document.getElementById("microbe").value,
-    substrate: document.getElementById("substrate").value,
-    electrode: document.getElementById("electrode").value,
-    enzyme: document.getElementById("enzyme").value,
-    voltage: document.getElementById("voltage").value,
-    duration: document.getElementById("duration").value
-  };
-  localStorage.setItem("mfc_inputs", JSON.stringify(inputs));
-  alert("Saved!");
-}
-
-function loadInputs() {
-  const inputs = JSON.parse(localStorage.getItem("mfc_inputs"));
-  if (!inputs) return alert("No saved inputs.");
-  for (const key in inputs) document.getElementById(key).value = inputs[key];
-  simulate();
-}
-</script>
+  </script>
 </body>
 </html>
