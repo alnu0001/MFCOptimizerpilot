@@ -57,6 +57,7 @@
     }
     canvas {
       margin-top: 20px;
+      max-width: 100%;
     }
     .input-section {
       margin-bottom: 20px;
@@ -120,6 +121,7 @@
 
         <button onclick="simulateMFC()">Simulate</button>
         <button onclick="loadPrevious()">Load Previous</button>
+        <button onclick="resetInputs()">Reset</button>
       </div>
     </div>
 
@@ -140,6 +142,7 @@
 
   <script>
     const Faraday = 96485, e_per_g_COD = 0.00834, COD_input = 20;
+    let chartPower, chartVoltage, chartResistance;
 
     function switchTab(id) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -180,7 +183,7 @@
          <strong>Microbe:</strong> ${microbe}, <strong>Substrate:</strong> ${substrate}, <strong>Enzyme:</strong> ${enzyme}`;
 
       localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
-      renderCharts(hours, power, voltage_drop, internal_resistance);
+      renderCharts(hours, parseFloat(power), parseFloat(voltage_drop), parseFloat(internal_resistance));
       switchTab('resultsTab');
     }
 
@@ -199,17 +202,31 @@
          <strong>Voltage Drop:</strong> ${data.voltage_drop} V<br>
          <strong>Internal Resistance:</strong> ${data.internal_resistance} Ω<br>
          <strong>Microbe:</strong> ${data.microbe}, <strong>Substrate:</strong> ${data.substrate}, <strong>Enzyme:</strong> ${data.enzyme}`;
-      renderCharts(data.hours, data.power, data.voltage_drop, data.internal_resistance);
+      renderCharts(data.hours, parseFloat(data.power), parseFloat(data.voltage_drop), parseFloat(data.internal_resistance));
       switchTab('resultsTab');
+    }
+
+    function resetInputs() {
+      document.getElementById('inputCE').value = 70;
+      document.getElementById('inputCOD').value = 70;
+      document.getElementById('inputMicrobe').value = '';
+      document.getElementById('inputSubstrate').value = '';
+      document.getElementById('inputEnzyme').value = 'mtrC';
+      document.getElementById('inputVoltage').value = 0.4;
+      document.getElementById('inputTimeScale').value = 24;
+      document.getElementById('numericOutput').innerHTML = '';
+      if (chartPower) chartPower.destroy();
+      if (chartVoltage) chartVoltage.destroy();
+      if (chartResistance) chartResistance.destroy();
     }
 
     function renderCharts(hours, power, voltage_drop, resistance) {
       const labels = Array.from({ length: hours }, (_, i) => i + 1);
-      const powers = labels.map(() => parseFloat(power) + Math.random() * 0.005);
-      const voltages = labels.map(() => parseFloat(voltage_drop) - Math.random() * 0.002);
-      const resistances = labels.map(() => parseFloat(resistance) + Math.random() * 0.02);
+      const powers = labels.map(i => power + Math.sin(i / 10) * 0.002);
+      const voltages = labels.map(i => voltage_drop + Math.cos(i / 20) * 0.001);
+      const resistances = labels.map(i => resistance + Math.sin(i / 15) * 0.005);
 
-      const config = (label, data, color) => ({
+      const makeChart = (ctx, label, data, color) => new Chart(ctx, {
         type: 'line',
         data: {
           labels,
@@ -217,13 +234,18 @@
         },
         options: {
           responsive: true,
+          plugins: { legend: { display: true } },
           scales: { x: { title: { display: true, text: 'Time (h)' } } }
         }
       });
 
-      new Chart(document.getElementById('chartPower'), config("Power Output (W/m²)", powers, 'green'));
-      new Chart(document.getElementById('chartVoltage'), config("Voltage Drop (V)", voltages, 'red'));
-      new Chart(document.getElementById('chartResistance'), config("Internal Resistance (Ω)", resistances, 'blue'));
+      if (chartPower) chartPower.destroy();
+      if (chartVoltage) chartVoltage.destroy();
+      if (chartResistance) chartResistance.destroy();
+
+      chartPower = makeChart(document.getElementById('chartPower'), "Power Output (W/m²)", powers, 'green');
+      chartVoltage = makeChart(document.getElementById('chartVoltage'), "Voltage Drop (V)", voltages, 'red');
+      chartResistance = makeChart(document.getElementById('chartResistance'), "Internal Resistance (Ω)", resistances, 'blue');
     }
   </script>
 </body>
