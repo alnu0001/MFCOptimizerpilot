@@ -1,97 +1,138 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MFC Simulator Pro</title>
+  <title>MFC Optimizer Pilot</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background-color: #f4f4f4;
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      background-color: #f9f9f9;
+      color: #333;
     }
     header {
-      background-color: #2e3b4e;
+      background-color: #1a202c;
       color: white;
       padding: 15px;
       text-align: center;
       font-size: 24px;
     }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    .tab {
+      margin: 0 10px;
+      padding: 10px 20px;
+      cursor: pointer;
+      background: #e2e8f0;
+      border-radius: 5px;
+    }
+    .tab.active {
+      background: #4a5568;
+      color: white;
+    }
     .container {
-      display: grid;
-      grid-template-columns: 1fr 2fr;
-      gap: 20px;
-      margin-top: 20px;
+      padding: 20px;
+      max-width: 1200px;
+      margin: auto;
     }
     .panel {
+      display: none;
       background: white;
       padding: 20px;
       border-radius: 8px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
+    .panel.active {
+      display: block;
+    }
     label, select, input, button {
       display: block;
-      width: 100%;
       margin-top: 10px;
+      width: 100%;
     }
     canvas {
       margin-top: 20px;
-      max-width: 100%;
+    }
+    .input-section {
+      margin-bottom: 20px;
+    }
+    .tooltip {
+      font-size: 12px;
+      color: gray;
     }
   </style>
 </head>
 <body>
-  <header>Microbial Fuel Cell Simulator Pro</header>
+  <header>MFC Optimizer Pilot</header>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('inputTab')">Inputs</div>
+    <div class="tab" onclick="switchTab('resultsTab')">Results</div>
+    <div class="tab" onclick="switchTab('graphsTab')">Graphs</div>
+  </div>
+
   <div class="container">
-    <div class="panel">
-      <h2>Input Parameters</h2>
-      <label>Coulombic Efficiency (%)</label>
-      <input id="inputCE" type="number" value="70" />
+    <!-- Input Tab -->
+    <div id="inputTab" class="panel active">
+      <div class="input-section">
+        <label for="inputCE">Coulombic Efficiency (%)</label>
+        <input id="inputCE" type="number" value="70" min="0" max="100" />
 
-      <label>COD Removal (%)</label>
-      <input id="inputCOD" type="number" value="70" />
+        <label for="inputCOD">COD Removal (%)</label>
+        <input id="inputCOD" type="number" value="70" min="0" max="100" />
 
-      <label>Microbe Type</label>
-      <input list="microbes" id="inputMicrobe" />
-      <datalist id="microbes">
-        <option value="Geobacter" />
-        <option value="Shewanella" />
-        <option value="Pseudomonas aeruginosa" />
-        <option value="Yeast" />
-        <option value="Best option" />
-      </datalist>
+        <label for="inputMicrobe">Microbe Type <span class="tooltip">(e.g. Geobacter)</span></label>
+        <input list="microbes" id="inputMicrobe" />
+        <datalist id="microbes">
+          <option value="Geobacter" />
+          <option value="Shewanella" />
+          <option value="Pseudomonas aeruginosa" />
+          <option value="Yeast" />
+          <option value="Best option" />
+        </datalist>
 
-      <label>Substrate Composition</label>
-      <input list="substrates" id="inputSubstrate" />
-      <datalist id="substrates">
-        <option value="Starch" />
-        <option value="Molasses" />
-        <option value="Acetate" />
-        <option value="Best option" />
-      </datalist>
+        <label for="inputSubstrate">Substrate Composition</label>
+        <input list="substrates" id="inputSubstrate" />
+        <datalist id="substrates">
+          <option value="Starch" />
+          <option value="Molasses" />
+          <option value="Acetate" />
+          <option value="Best option" />
+        </datalist>
 
-      <label>Enzyme Type</label>
-      <input id="inputEnzyme" type="text" value="mtrC" />
+        <label for="inputEnzyme">Enzyme Type</label>
+        <input id="inputEnzyme" type="text" value="mtrC" />
 
-      <label>Cell Voltage (V)</label>
-      <input id="inputVoltage" type="number" value="0.4" step="0.01" />
+        <label for="inputVoltage">Cell Voltage (V)</label>
+        <input id="inputVoltage" type="number" value="0.4" step="0.01" min="0" />
 
-      <label>Simulation Duration</label>
-      <select id="inputTimeScale">
-        <option value="24">24 Hours</option>
-        <option value="168">7 Days</option>
-        <option value="720">30 Days</option>
-      </select>
+        <label for="inputTimeScale">Simulation Duration</label>
+        <select id="inputTimeScale">
+          <option value="24">24 Hours</option>
+          <option value="168">7 Days</option>
+          <option value="720">30 Days</option>
+        </select>
 
-      <button onclick="simulateMFC()">Simulate</button>
-      <button onclick="loadPrevious()">Load Previous</button>
+        <button onclick="simulateMFC()">Simulate</button>
+        <button onclick="loadPrevious()">Load Previous</button>
+      </div>
+    </div>
 
+    <!-- Results Tab -->
+    <div id="resultsTab" class="panel">
+      <h2>Simulation Results</h2>
       <div id="numericOutput"></div>
     </div>
 
-    <div class="panel">
-      <h2>Simulation Graphs</h2>
+    <!-- Graphs Tab -->
+    <div id="graphsTab" class="panel">
+      <h2>Graphs</h2>
       <canvas id="chartPower"></canvas>
       <canvas id="chartVoltage"></canvas>
       <canvas id="chartResistance"></canvas>
@@ -100,6 +141,13 @@
 
   <script>
     const Faraday = 96485, e_per_g_COD = 0.00834, COD_input = 20;
+
+    function switchTab(id) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.querySelector(`.tab[onclick*='${id}']`).classList.add('active');
+    }
 
     function bestMatch(type, value) {
       if (value.toLowerCase().includes('best')) {
@@ -134,6 +182,7 @@
 
       localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
       renderCharts(hours, power, voltage_drop, internal_resistance);
+      switchTab('resultsTab');
     }
 
     function loadPrevious() {
@@ -152,24 +201,20 @@
          <strong>Internal Resistance:</strong> ${data.internal_resistance} Ω<br>
          <strong>Microbe:</strong> ${data.microbe}, <strong>Substrate:</strong> ${data.substrate}, <strong>Enzyme:</strong> ${data.enzyme}`;
       renderCharts(data.hours, data.power, data.voltage_drop, data.internal_resistance);
+      switchTab('resultsTab');
     }
 
     function renderCharts(hours, power, voltage_drop, resistance) {
       const labels = Array.from({ length: hours }, (_, i) => i + 1);
-      const powers = labels.map(() => parseFloat(power));
-      const voltages = labels.map(() => parseFloat(voltage_drop));
-      const resistances = labels.map(() => parseFloat(resistance));
+      const powers = labels.map(() => parseFloat(power) + Math.random() * 0.005);
+      const voltages = labels.map(() => parseFloat(voltage_drop) - Math.random() * 0.002);
+      const resistances = labels.map(() => parseFloat(resistance) + Math.random() * 0.02);
 
       const config = (label, data, color) => ({
         type: 'line',
         data: {
           labels,
-          datasets: [{
-            label,
-            data,
-            borderColor: color,
-            fill: false
-          }]
+          datasets: [{ label, data, borderColor: color, fill: false }]
         },
         options: {
           responsive: true,
