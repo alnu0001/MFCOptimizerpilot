@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -8,16 +7,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <style>
     :root {
-      --bg-color: #121212;
-      --panel-bg: #1e1e1e;
-      --text-color: #e0e0e0;
-      --accent: #2d3748;
-      --highlight: #4fd1c5;
-      --input-bg: #2a2a2a;
-      --border-color: #333;
-    }
-
-    body.light-mode {
       --bg-color: #ffffff;
       --panel-bg: #f1f1f1;
       --text-color: #222222;
@@ -25,6 +14,16 @@
       --highlight: #3182ce;
       --input-bg: #ffffff;
       --border-color: #ccc;
+    }
+
+    body.dark-mode {
+      --bg-color: #121212;
+      --panel-bg: #1e1e1e;
+      --text-color: #e0e0e0;
+      --accent: #2d3748;
+      --highlight: #4fd1c5;
+      --input-bg: #2a2a2a;
+      --border-color: #333;
     }
 
     body {
@@ -37,7 +36,7 @@
     }
     header {
       background-color: var(--accent);
-      color: white;
+      color: black;
       padding: 15px;
       text-align: center;
       font-size: 24px;
@@ -125,10 +124,10 @@
     }
   </style>
 </head>
-<body>
+<body class="light-mode">
   <header>
     MFC Optimizer Pilot (ML-Enhanced)
-    <button class="theme-toggle" onclick="toggleTheme()">Toggle Night Mode</button>
+    <button class="theme-toggle" onclick="toggleTheme()">Night Mode</button>
   </header>
 
   <div class="container">
@@ -148,24 +147,22 @@
       <label for="enzyme">Enzyme (encoded 0–1)</label>
       <input id="enzyme" type="number" value="0.5" step="0.01" />
 
-      <button onclick="runPrediction()">Predict</button>
+      <button onclick="runPrediction()">Simulate</button>
+      <button onclick="loadPrevious()">Load Previous</button>
+      <button onclick="resetInputs()">Reset</button>
     </div>
     <div id="results"></div>
   </div>
 
   <script>
     function applyTheme() {
-      const savedTheme = localStorage.getItem('theme');
-      if (savedTheme === 'light') {
-        document.body.classList.add('light-mode');
-      } else {
-        document.body.classList.remove('light-mode');
-      }
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.body.classList.toggle('dark-mode', savedTheme === 'dark');
     }
 
     function toggleTheme() {
-      const isLight = document.body.classList.toggle('light-mode');
-      localStorage.setItem('theme', isLight ? 'light' : 'dark');
+      const isDark = document.body.classList.toggle('dark-mode');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }
 
     window.addEventListener('DOMContentLoaded', applyTheme);
@@ -196,6 +193,19 @@
         `<strong>Predicted Voltage:</strong> ${voltage.toFixed(3)} V<br>
          <strong>Predicted Power:</strong> ${power.toFixed(3)} W/m²<br>
          <strong>Predicted Resistance:</strong> ${resistance.toFixed(2)} Ω`;
+    }
+
+    function loadPrevious() {
+      alert("This feature will be updated in next release.");
+    }
+
+    function resetInputs() {
+      document.getElementById('ce').value = 75;
+      document.getElementById('cod').value = 80;
+      document.getElementById('microbe').value = 0.5;
+      document.getElementById('substrate').value = 0.5;
+      document.getElementById('enzyme').value = 0.5;
+      document.getElementById('results').innerHTML = '';
     }
 
     loadModel();
