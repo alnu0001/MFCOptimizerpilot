@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MFC Optimizer Pro</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f4f4;
+      color: #111;
+      margin: 0;
+      padding: 20px;
+    }
+    header {
+      background-color: #2e3b4e;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 24px;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .panel {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, select, button, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    canvas {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>Microbial Fuel Cell Optimizer Pro</header>
+  <div class="container">
+    <div class="panel">
+      <h2>Input Parameters</h2>
+      <label for="inputCE">Coulombic Efficiency (%)</label>
+      <input type="number" id="inputCE" value="70">
+
+      <label for="inputCOD">COD Removal (%)</label>
+      <input type="number" id="inputCOD" value="70">
+
+      <label for="inputMicrobe">Microbe Type</label>
+      <input type="text" id="inputMicrobe" value="Geobacter">
+
+      <label for="inputSubstrate">Substrate Composition</label>
+      <input type="text" id="inputSubstrate" value="Starch">
+
+      <label for="inputEnzyme">Enzyme Type</label>
+      <input type="text" id="inputEnzyme" value="mtrC">
+
+      <label for="inputVoltage">Cell Voltage (V)</label>
+      <input type="number" step="0.01" id="inputVoltage" value="0.4">
+
+      <button onclick="computePowerOutput()">Compute Power Output</button>
+      <div id="outputPower"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Power Output Heatmap</h2>
+      <canvas id="heatmap"></canvas>
+    </div>
+  </div>
+
+  <script>
+    function computePowerOutput() {
+      const CE = parseFloat(document.getElementById('inputCE').value);
+      const COD = parseFloat(document.getElementById('inputCOD').value);
+      const E = parseFloat(document.getElementById('inputVoltage').value);
+      const COD_input = 20; // g/m^2/day
+
+      const COD_removed = COD_input * (COD / 100);
+      const power = COD_removed * 0.00834 * 96485 * (CE / 100) * (E / 86400);
+      const roundedPower = power.toFixed(2);
+
+      document.getElementById('outputPower').innerText = `Estimated Power Output: ${roundedPower} W/m²`;
+      generateHeatmap();
+    }
+
+    function generateHeatmap() {
+      const ctx = document.getElementById('heatmap').getContext('2d');
+      if (window.heatmapChart) window.heatmapChart.destroy();
+
+      const E = parseFloat(document.getElementById('inputVoltage').value);
+      const COD_input = 20;
+
+      const data = [];
+      const labelsX = [];
+      const labelsY = [];
+
+      for (let ce = 10; ce <= 100; ce += 10) {
+        labelsX.push(ce);
+      }
+      for (let cod = 10; cod <= 100; cod += 10) {
+        labelsY.push(cod);
+        const row = [];
+        for (let ce of labelsX) {
+          const COD_removed = COD_input * (cod / 100);
+          const power = COD_removed * 0.00834 * 96485 * (ce / 100) * (E / 86400);
+          row.push(parseFloat(power.toFixed(2)));
+        }
+        data.push(row);
+      }
+
+      const heatData = {
+        labels: labelsX.map(ce => ce + '% CE'),
+        datasets: labelsY.map((cod, rowIndex) => ({
+          label: cod + '% COD',
+          data: data[rowIndex],
+          borderWidth: 1,
+          fill: false
+        }))
+      };
+
+      window.heatmapChart = new Chart(ctx, {
+        type: 'line',
+        data: heatData,
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true },
+            x: { title: { display: true, text: 'Coulombic Efficiency (%)' } }
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: 'Power Output (W/m²) vs CE and COD Removal'
+            }
+          }
+        }
+      });
+    }
+
+    window.onload = computePowerOutput;
+  </script>
+</body>
+</html>
