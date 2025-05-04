@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -130,12 +131,74 @@
     <button class="theme-toggle" onclick="toggleTheme()">Toggle Night Mode</button>
   </header>
 
-  <!-- Existing HTML stays unchanged below -->
-  <!-- JS BELOW -->
+  <div class="container">
+    <div class="input-section">
+      <label for="ce">Coulombic Efficiency (%)</label>
+      <input id="ce" type="number" value="75" />
+
+      <label for="cod">COD Removal (%)</label>
+      <input id="cod" type="number" value="80" />
+
+      <label for="microbe">Microbe (encoded 0–1)</label>
+      <input id="microbe" type="number" value="0.5" step="0.01" />
+
+      <label for="substrate">Substrate (encoded 0–1)</label>
+      <input id="substrate" type="number" value="0.5" step="0.01" />
+
+      <label for="enzyme">Enzyme (encoded 0–1)</label>
+      <input id="enzyme" type="number" value="0.5" step="0.01" />
+
+      <button onclick="runPrediction()">Predict</button>
+    </div>
+    <div id="results"></div>
+  </div>
+
   <script>
-    function toggleTheme() {
-      document.body.classList.toggle('light-mode');
+    function applyTheme() {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'light') {
+        document.body.classList.add('light-mode');
+      } else {
+        document.body.classList.remove('light-mode');
+      }
     }
+
+    function toggleTheme() {
+      const isLight = document.body.classList.toggle('light-mode');
+      localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    }
+
+    window.addEventListener('DOMContentLoaded', applyTheme);
+
+    let model;
+    async function loadModel() {
+      model = await tf.loadLayersModel('model/model.json');
+      console.log("ML model loaded.");
+    }
+
+    async function runPrediction() {
+      if (!model) {
+        alert("Model not loaded yet.");
+        return;
+      }
+      const ce = parseFloat(document.getElementById('ce').value) / 100;
+      const cod = parseFloat(document.getElementById('cod').value) / 100;
+      const microbe = parseFloat(document.getElementById('microbe').value);
+      const substrate = parseFloat(document.getElementById('substrate').value);
+      const enzyme = parseFloat(document.getElementById('enzyme').value);
+
+      const input = tf.tensor2d([[ce, cod, microbe, substrate, enzyme]]);
+      const prediction = model.predict(input);
+      const result = await prediction.array();
+      const [voltage, power, resistance] = result[0];
+
+      document.getElementById('results').innerHTML =
+        `<strong>Predicted Voltage:</strong> ${voltage.toFixed(3)} V<br>
+         <strong>Predicted Power:</strong> ${power.toFixed(3)} W/m²<br>
+         <strong>Predicted Resistance:</strong> ${resistance.toFixed(2)} Ω`;
+    }
+
+    loadModel();
   </script>
 </body>
 </html>
