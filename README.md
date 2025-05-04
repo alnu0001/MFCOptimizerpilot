@@ -2,8 +2,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MFC Optimizer Pilot</title>
+  <title>MFC Optimizer Pilot (ML-Enhanced)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -69,7 +70,7 @@
   </style>
 </head>
 <body>
-  <header>MFC Optimizer Pilot</header>
+  <header>MFC Optimizer Pilot (ML-Enhanced)</header>
 
   <div class="tabs">
     <div class="tab active" onclick="switchTab('inputTab')">Inputs</div>
