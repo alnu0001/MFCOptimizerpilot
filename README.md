@@ -7,16 +7,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <style>
     :root {
-      --bg-color: #ffffff;
-      --panel-bg: #f1f1f1;
-      --text-color: #222222;
-      --accent: #e2e8f0;
-      --highlight: #3182ce;
-      --input-bg: #ffffff;
-      --border-color: #ccc;
-    }
-
-    body.dark-mode {
       --bg-color: #121212;
       --panel-bg: #1e1e1e;
       --text-color: #e0e0e0;
@@ -32,27 +22,13 @@
       padding: 0;
       background-color: var(--bg-color);
       color: var(--text-color);
-      transition: all 0.3s ease;
     }
     header {
       background-color: var(--accent);
-      color: black;
+      color: white;
       padding: 15px;
       text-align: center;
       font-size: 24px;
-      position: relative;
-    }
-    .theme-toggle {
-      position: absolute;
-      right: 20px;
-      top: 15px;
-      background: var(--highlight);
-      color: black;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
     }
     .tabs {
       display: flex;
@@ -109,7 +85,7 @@
       cursor: pointer;
     }
     button:hover {
-      opacity: 0.9;
+      background-color: #38b2ac;
     }
     canvas {
       margin-top: 20px;
@@ -124,91 +100,155 @@
     }
   </style>
 </head>
-<body class="light-mode">
-  <header>
-    MFC Optimizer Pilot (ML-Enhanced)
-    <button class="theme-toggle" onclick="toggleTheme()">Night Mode</button>
-  </header>
-
-  <div class="container">
-    <div class="input-section">
-      <label for="ce">Coulombic Efficiency (%)</label>
-      <input id="ce" type="number" value="75" />
-
-      <label for="cod">COD Removal (%)</label>
-      <input id="cod" type="number" value="80" />
-
-      <label for="microbe">Microbe (encoded 0–1)</label>
-      <input id="microbe" type="number" value="0.5" step="0.01" />
-
-      <label for="substrate">Substrate (encoded 0–1)</label>
-      <input id="substrate" type="number" value="0.5" step="0.01" />
-
-      <label for="enzyme">Enzyme (encoded 0–1)</label>
-      <input id="enzyme" type="number" value="0.5" step="0.01" />
-
-      <button onclick="runPrediction()">Simulate</button>
-      <button onclick="loadPrevious()">Load Previous</button>
-      <button onclick="resetInputs()">Reset</button>
-    </div>
-    <div id="results"></div>
+<body>
+  <header>MFC Optimizer Pilot (ML-Enhanced)</header>
+  <div class="tabs">
+    <div class="tab active" id="tab-inputs">Inputs</div>
+    <div class="tab" id="tab-results">Results</div>
+    <div class="tab" id="tab-graphs">Graphs</div>
   </div>
-
+  <div class="container">
+    <div id="inputTab" class="panel active">
+      <div class="input-section">
+        <label for="inputCE">Coulombic Efficiency (%)</label>
+        <input id="inputCE" type="number" value="70" min="0" max="100" />
+        <label for="inputCOD">COD Removal (%)</label>
+        <input id="inputCOD" type="number" value="70" min="0" max="100" />
+        <label for="inputMicrobe">Microbe Type <span class="tooltip">(e.g. Geobacter)</span></label>
+        <input list="microbes" id="inputMicrobe" />
+        <datalist id="microbes">
+          <option value="Geobacter" />
+          <option value="Shewanella" />
+          <option value="Pseudomonas aeruginosa" />
+          <option value="Yeast" />
+          <option value="Best option" />
+        </datalist>
+        <label for="inputSubstrate">Substrate Composition</label>
+        <input list="substrates" id="inputSubstrate" />
+        <datalist id="substrates">
+          <option value="Starch" />
+          <option value="Molasses" />
+          <option value="Acetate" />
+          <option value="Best option" />
+        </datalist>
+        <label for="inputEnzyme">Enzyme Type</label>
+        <input id="inputEnzyme" type="text" value="mtrC" />
+        <label for="inputVoltage">Cell Voltage (V)</label>
+        <input id="inputVoltage" type="number" value="0.4" step="0.01" min="0" />
+        <label for="inputTimeScale">Simulation Duration</label>
+        <select id="inputTimeScale">
+          <option value="24">24 Hours</option>
+          <option value="168">7 Days</option>
+          <option value="720">30 Days</option>
+        </select>
+        <button id="simulateBtn">Simulate</button>
+        <button id="loadBtn">Load Previous</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+    </div>
+    <div id="resultsTab" class="panel">
+      <h2>Simulation Results</h2>
+      <div id="numericOutput"></div>
+    </div>
+    <div id="graphsTab" class="panel">
+      <h2>Graphs</h2>
+      <canvas id="chartPower"></canvas>
+      <canvas id="chartVoltage"></canvas>
+      <canvas id="chartResistance"></canvas>
+    </div>
+  </div>
   <script>
-    function applyTheme() {
-      const savedTheme = localStorage.getItem('theme') || 'light';
-      document.body.classList.toggle('dark-mode', savedTheme === 'dark');
-    }
-
-    function toggleTheme() {
-      const isDark = document.body.classList.toggle('dark-mode');
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    }
-
-    window.addEventListener('DOMContentLoaded', applyTheme);
-
     let model;
-    async function loadModel() {
-      model = await tf.loadLayersModel('model/model.json');
-      console.log("ML model loaded.");
+    tf.loadLayersModel('model/model.json').then(m => model = m);
+
+    const chartIDs = ['chartPower', 'chartVoltage', 'chartResistance'];
+    let charts = [];
+    const encode = (val, list) => list.findIndex(opt => opt.toLowerCase() === val.toLowerCase()) / list.length || 0;
+    const microbes = ['Geobacter', 'Shewanella', 'Pseudomonas aeruginosa', 'Yeast'];
+    const substrates = ['Starch', 'Molasses', 'Acetate'];
+
+    function switchTab(id) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      const tabMap = { inputTab: 'tab-inputs', resultsTab: 'tab-results', graphsTab: 'tab-graphs' };
+      document.getElementById(tabMap[id]).classList.add('active');
     }
 
-    async function runPrediction() {
-      if (!model) {
-        alert("Model not loaded yet.");
-        return;
-      }
-      const ce = parseFloat(document.getElementById('ce').value) / 100;
-      const cod = parseFloat(document.getElementById('cod').value) / 100;
-      const microbe = parseFloat(document.getElementById('microbe').value);
-      const substrate = parseFloat(document.getElementById('substrate').value);
-      const enzyme = parseFloat(document.getElementById('enzyme').value);
-
-      const input = tf.tensor2d([[ce, cod, microbe, substrate, enzyme]]);
-      const prediction = model.predict(input);
-      const result = await prediction.array();
-      const [voltage, power, resistance] = result[0];
-
-      document.getElementById('results').innerHTML =
-        `<strong>Predicted Voltage:</strong> ${voltage.toFixed(3)} V<br>
-         <strong>Predicted Power:</strong> ${power.toFixed(3)} W/m²<br>
-         <strong>Predicted Resistance:</strong> ${resistance.toFixed(2)} Ω`;
+    async function simulateMFC() {
+      const CE = parseFloat(document.getElementById('inputCE').value);
+      const COD = parseFloat(document.getElementById('inputCOD').value);
+      const E = parseFloat(document.getElementById('inputVoltage').value);
+      const hours = parseInt(document.getElementById('inputTimeScale').value);
+      const microbe = encode(document.getElementById('inputMicrobe').value || 'Geobacter', microbes);
+      const substrate = encode(document.getElementById('inputSubstrate').value || 'Starch', substrates);
+      const enzyme = document.getElementById('inputEnzyme').value.length / 10;
+      const input = tf.tensor2d([[CE / 100, COD / 100, E, microbe, substrate, enzyme]]);
+      const output = await model.predict(input).array();
+      const [power, voltage_drop, internal_resistance] = output[0];
+      document.getElementById("numericOutput").innerHTML =
+        `<strong>Power Output:</strong> ${power.toFixed(3)} W/m²<br>
+         <strong>Voltage Drop:</strong> ${voltage_drop.toFixed(3)} V<br>
+         <strong>Internal Resistance:</strong> ${internal_resistance.toFixed(2)} Ω`;
+      localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
+      renderCharts(hours, power, voltage_drop, internal_resistance);
+      switchTab('resultsTab');
     }
 
     function loadPrevious() {
-      alert("This feature will be updated in next release.");
+      const data = JSON.parse(localStorage.getItem('lastSim'));
+      if (!data) return alert("No previous data.");
+      document.getElementById('inputCE').value = data.CE;
+      document.getElementById('inputCOD').value = data.COD;
+      document.getElementById('inputVoltage').value = data.E;
+      document.getElementById('inputTimeScale').value = data.hours;
+      document.getElementById("numericOutput").innerHTML =
+        `<strong>Power Output:</strong> ${data.power.toFixed(3)} W/m²<br>
+         <strong>Voltage Drop:</strong> ${data.voltage_drop.toFixed(3)} V<br>
+         <strong>Internal Resistance:</strong> ${data.internal_resistance.toFixed(2)} Ω`;
+      renderCharts(data.hours, data.power, data.voltage_drop, data.internal_resistance);
+      switchTab('resultsTab');
     }
 
     function resetInputs() {
-      document.getElementById('ce').value = 75;
-      document.getElementById('cod').value = 80;
-      document.getElementById('microbe').value = 0.5;
-      document.getElementById('substrate').value = 0.5;
-      document.getElementById('enzyme').value = 0.5;
-      document.getElementById('results').innerHTML = '';
+      document.getElementById('inputCE').value = 70;
+      document.getElementById('inputCOD').value = 70;
+      document.getElementById('inputMicrobe').value = '';
+      document.getElementById('inputSubstrate').value = '';
+      document.getElementById('inputEnzyme').value = 'mtrC';
+      document.getElementById('inputVoltage').value = 0.4;
+      document.getElementById('inputTimeScale').value = 24;
+      document.getElementById('numericOutput').innerHTML = '';
+      charts.forEach(c => c.destroy());
+      charts = [];
+      switchTab('inputTab');
     }
 
-    loadModel();
+    function renderCharts(hours, power, voltage, resistance) {
+      const labels = Array.from({ length: hours }, (_, i) => i + 1);
+      const powers = labels.map(i => power + Math.sin(i / 10) * 0.01);
+      const voltages = labels.map(i => voltage + Math.cos(i / 20) * 0.01);
+      const resistances = labels.map(i => resistance + Math.sin(i / 15) * 0.01);
+      const ctxs = chartIDs.map(id => document.getElementById(id).getContext('2d'));
+      const dataSets = [
+        { label: "Power Output (W/m²)", data: powers, color: "#4fd1c5" },
+        { label: "Voltage Drop (V)", data: voltages, color: "#fc8181" },
+        { label: "Internal Resistance (Ω)", data: resistances, color: "#90cdf4" }
+      ];
+      charts.forEach(c => c.destroy());
+      charts = dataSets.map((d, i) => new Chart(ctxs[i], {
+        type: 'line',
+        data: { labels, datasets: [{ label: d.label, data: d.data, borderColor: d.color, fill: false }] },
+        options: { responsive: true, scales: { x: { title: { display: true, text: 'Time (h)' } } } }
+      }));
+    }
+
+    document.getElementById('tab-inputs').onclick = () => switchTab('inputTab');
+    document.getElementById('tab-results').onclick = () => switchTab('resultsTab');
+    document.getElementById('tab-graphs').onclick = () => switchTab('graphsTab');
+    document.getElementById('simulateBtn').onclick = simulateMFC;
+    document.getElementById('loadBtn').onclick = loadPrevious;
+    document.getElementById('resetBtn').onclick = resetInputs;
   </script>
 </body>
 </html>
