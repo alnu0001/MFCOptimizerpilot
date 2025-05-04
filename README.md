@@ -1,8 +1,9 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MFC Optimizer Pilot </title>
+  <title>MFC Optimizer Pilot (ML-Enhanced)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <style>
@@ -142,8 +143,15 @@
   </div>
 
   <script>
-    const Faraday = 96485, e_per_g_COD = 0.00834, COD_input = 20;
-    let chartPower, chartVoltage, chartResistance;
+    let model;
+    tf.loadLayersModel('model/model.json').then(m => model = m);
+
+    const chartIDs = ['chartPower', 'chartVoltage', 'chartResistance'];
+    let charts = [];
+
+    const encode = (val, list) => list.findIndex(opt => opt.toLowerCase() === val.toLowerCase()) / list.length || 0;
+    const microbes = ['Geobacter', 'Shewanella', 'Pseudomonas aeruginosa', 'Yeast'];
+    const substrates = ['Starch', 'Molasses', 'Acetate'];
 
     function switchTab(id) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -152,39 +160,26 @@
       document.querySelector(`.tab[onclick*='${id}']`).classList.add('active');
     }
 
-    function bestMatch(type, value) {
-      if (value.toLowerCase().includes('best')) {
-        return type === 'microbe' ? 'Shewanella' :
-               type === 'substrate' ? 'Acetate' :
-               'mtrC';
-      }
-      return value;
-    }
-
-    function simulateMFC() {
+    async function simulateMFC() {
       const CE = parseFloat(document.getElementById('inputCE').value);
       const COD = parseFloat(document.getElementById('inputCOD').value);
       const E = parseFloat(document.getElementById('inputVoltage').value);
       const hours = parseInt(document.getElementById('inputTimeScale').value);
-      const microbe = bestMatch('microbe', document.getElementById('inputMicrobe').value);
-      const substrate = bestMatch('substrate', document.getElementById('inputSubstrate').value);
-      const enzyme = document.getElementById('inputEnzyme').value;
+      const microbe = encode(document.getElementById('inputMicrobe').value || 'Geobacter', microbes);
+      const substrate = encode(document.getElementById('inputSubstrate').value || 'Starch', substrates);
+      const enzyme = document.getElementById('inputEnzyme').value.length / 10;
 
-      const COD_removed = COD_input * (COD / 100);
-      const mol_e = COD_removed * e_per_g_COD;
-      const total_charge = mol_e * Faraday * (CE / 100);
-      const power = (total_charge * E / (3600 * hours)).toFixed(3);
-      const voltage_drop = (E * (1 - CE / 100)).toFixed(3);
-      const internal_resistance = ((E - voltage_drop) / (total_charge / (3600 * hours))).toFixed(2);
+      const input = tf.tensor2d([[CE / 100, COD / 100, E, microbe, substrate, enzyme]]);
+      const output = await model.predict(input).array();
+      const [power, voltage_drop, internal_resistance] = output[0];
 
       document.getElementById("numericOutput").innerHTML =
-        `<strong>Power Output:</strong> ${power} W/m²<br>
-         <strong>Voltage Drop:</strong> ${voltage_drop} V<br>
-         <strong>Internal Resistance:</strong> ${internal_resistance} Ω<br>
-         <strong>Microbe:</strong> ${microbe}, <strong>Substrate:</strong> ${substrate}, <strong>Enzyme:</strong> ${enzyme}`;
+        `<strong>Power Output:</strong> ${power.toFixed(3)} W/m²<br>
+         <strong>Voltage Drop:</strong> ${voltage_drop.toFixed(3)} V<br>
+         <strong>Internal Resistance:</strong> ${internal_resistance.toFixed(2)} Ω`;
 
       localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
-      renderCharts(hours, parseFloat(power), parseFloat(voltage_drop), parseFloat(internal_resistance));
+      renderCharts(hours, power, voltage_drop, internal_resistance);
       switchTab('graphsTab');
     }
 
@@ -195,15 +190,11 @@
       document.getElementById('inputCOD').value = data.COD;
       document.getElementById('inputVoltage').value = data.E;
       document.getElementById('inputTimeScale').value = data.hours;
-      document.getElementById('inputMicrobe').value = data.microbe;
-      document.getElementById('inputSubstrate').value = data.substrate;
-      document.getElementById('inputEnzyme').value = data.enzyme;
       document.getElementById("numericOutput").innerHTML =
-        `<strong>Power Output:</strong> ${data.power} W/m²<br>
-         <strong>Voltage Drop:</strong> ${data.voltage_drop} V<br>
-         <strong>Internal Resistance:</strong> ${data.internal_resistance} Ω<br>
-         <strong>Microbe:</strong> ${data.microbe}, <strong>Substrate:</strong> ${data.substrate}, <strong>Enzyme:</strong> ${data.enzyme}`;
-      renderCharts(data.hours, parseFloat(data.power), parseFloat(data.voltage_drop), parseFloat(data.internal_resistance));
+        `<strong>Power Output:</strong> ${data.power.toFixed(3)} W/m²<br>
+         <strong>Voltage Drop:</strong> ${data.voltage_drop.toFixed(3)} V<br>
+         <strong>Internal Resistance:</strong> ${data.internal_resistance.toFixed(2)} Ω`;
+      renderCharts(data.hours, data.power, data.voltage_drop, data.internal_resistance);
       switchTab('graphsTab');
     }
 
@@ -216,38 +207,30 @@
       document.getElementById('inputVoltage').value = 0.4;
       document.getElementById('inputTimeScale').value = 24;
       document.getElementById('numericOutput').innerHTML = '';
-      if (chartPower) chartPower.destroy();
-      if (chartVoltage) chartVoltage.destroy();
-      if (chartResistance) chartResistance.destroy();
+      charts.forEach(c => c.destroy());
+      charts = [];
     }
 
-    function renderCharts(hours, power, voltage_drop, resistance) {
+    function renderCharts(hours, power, voltage, resistance) {
       const labels = Array.from({ length: hours }, (_, i) => i + 1);
-      const powers = labels.map(i => power + Math.sin(i / 10) * 0.002);
-      const voltages = labels.map(i => voltage_drop + Math.cos(i / 20) * 0.001);
-      const resistances = labels.map(i => resistance + Math.sin(i / 15) * 0.005);
+      const powers = labels.map(i => power + Math.sin(i / 10) * 0.01);
+      const voltages = labels.map(i => voltage + Math.cos(i / 20) * 0.01);
+      const resistances = labels.map(i => resistance + Math.sin(i / 15) * 0.01);
 
-      const makeChart = (ctx, label, data, color) => new Chart(ctx, {
+      const ctxs = chartIDs.map(id => document.getElementById(id).getContext('2d'));
+      const dataSets = [
+        { label: "Power Output (W/m²)", data: powers, color: "green" },
+        { label: "Voltage Drop (V)", data: voltages, color: "red" },
+        { label: "Internal Resistance (Ω)", data: resistances, color: "blue" }
+      ];
+      charts.forEach(c => c.destroy());
+      charts = dataSets.map((d, i) => new Chart(ctxs[i], {
         type: 'line',
-        data: {
-          labels,
-          datasets: [{ label, data, borderColor: color, fill: false }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: true } },
-          scales: { x: { title: { display: true, text: 'Time (h)' } } }
-        }
-      });
-
-      if (chartPower) chartPower.destroy();
-      if (chartVoltage) chartVoltage.destroy();
-      if (chartResistance) chartResistance.destroy();
-
-      chartPower = makeChart(document.getElementById('chartPower'), "Power Output (W/m²)", powers, 'green');
-      chartVoltage = makeChart(document.getElementById('chartVoltage'), "Voltage Drop (V)", voltages, 'red');
-      chartResistance = makeChart(document.getElementById('chartResistance'), "Internal Resistance (Ω)", resistances, 'blue');
+        data: { labels, datasets: [{ label: d.label, data: d.data, borderColor: d.color, fill: false }] },
+        options: { responsive: true, scales: { x: { title: { display: true, text: 'Time (h)' } } } }
+      }));
     }
   </script>
 </body>
 </html>
+
