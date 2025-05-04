@@ -184,7 +184,7 @@
 
       localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
       renderCharts(hours, parseFloat(power), parseFloat(voltage_drop), parseFloat(internal_resistance));
-      switchTab('resultsTab');
+      switchTab('graphsTab');
     }
 
     function loadPrevious() {
@@ -203,7 +203,7 @@
          <strong>Internal Resistance:</strong> ${data.internal_resistance} Ω<br>
          <strong>Microbe:</strong> ${data.microbe}, <strong>Substrate:</strong> ${data.substrate}, <strong>Enzyme:</strong> ${data.enzyme}`;
       renderCharts(data.hours, parseFloat(data.power), parseFloat(data.voltage_drop), parseFloat(data.internal_resistance));
-      switchTab('resultsTab');
+      switchTab('graphsTab');
     }
 
     function resetInputs() {
