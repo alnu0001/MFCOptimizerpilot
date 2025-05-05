@@ -5,91 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart MFC Optimizer Pilot (AI-Enhanced)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f9f9f9;
-      color: #333;
-    }
-    header {
-      background-color: #1a202c;
-      color: white;
-      padding: 15px;
-      text-align: center;
-      font-size: 24px;
-    }
-    .tabs {
-      display: flex;
-      justify-content: center;
-      margin-top: 10px;
-    }
-    .tab {
-      margin: 0 10px;
-      padding: 10px 20px;
-      cursor: pointer;
-      background: #e2e8f0;
-      border-radius: 5px;
-    }
-    .tab.active {
-      background: #4a5568;
-      color: white;
-    }
-    .container {
-      padding: 20px;
-      max-width: 1200px;
-      margin: auto;
-    }
-    .panel {
-      display: none;
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    .panel.active {
-      display: block;
-    }
-    label, select, input, button, textarea {
-      display: block;
-      margin-top: 10px;
-      width: 100%;
-    }
-    canvas {
-      margin-top: 20px;
-      max-width: 100%;
-    }
-    .input-section {
-      margin-bottom: 20px;
-    }
-    .tooltip {
-      font-size: 12px;
-      color: gray;
-    }
-    .results-box {
-      margin-top: 15px;
-      background: #edf2f7;
-      padding: 15px;
-      border-radius: 5px;
-    }
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background-color: #f9f9f9; color: #333; }
+    header { background-color: #1a202c; color: white; padding: 15px; text-align: center; font-size: 24px; }
+    .tabs { display: flex; justify-content: center; margin-top: 10px; }
+    .tab { margin: 0 10px; padding: 10px 20px; cursor: pointer; background: #e2e8f0; border-radius: 5px; }
+    .tab.active { background: #4a5568; color: white; }
+    .container { padding: 20px; max-width: 1200px; margin: auto; }
+    .panel { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .panel.active { display: block; }
+    label, select, input, button, textarea { display: block; margin-top: 10px; width: 100%; }
+    canvas { margin-top: 20px; max-width: 100%; }
+    .input-section { margin-bottom: 20px; }
+    .tooltip { font-size: 12px; color: gray; }
+    .results-box { margin-top: 15px; background: #edf2f7; padding: 15px; border-radius: 5px; }
   </style>
 </head>
 <body>
   <header>Smart MFC Optimizer Pilot (AI-Enhanced)</header>
-
   <div class="tabs">
     <div class="tab active" onclick="switchTab('inputTab')">Inputs</div>
     <div class="tab" onclick="switchTab('resultsTab')">Results</div>
     <div class="tab" onclick="switchTab('graphsTab')">Graphs</div>
   </div>
-
   <div class="container">
     <div id="inputTab" class="panel active">
       <div class="input-section">
         <label for="naturalLang">Describe Your Scenario</label>
-        <textarea id="naturalLang" rows="2" placeholder="e.g. Best performing microbe for maximum power for 7 days"></textarea>
+        <textarea id="naturalLang" rows="2" placeholder="e.g. pH increased, heat increased, humidity decreased"></textarea>
 
         <label for="inputCE">Coulombic Efficiency (%)</label>
         <input id="inputCE" type="number" value="70" min="0" max="100" />
@@ -129,7 +73,7 @@
           <option value="720">30 Days</option>
         </select>
 
-        <button onclick="parseNaturalLanguage(); simulateMFC();">Parse Description</button>
+        <button onclick="parseNaturalLanguage(); simulateMFC();">Describe Scenario</button>
         <button onclick="simulateMFC()">Simulate</button>
         <button onclick="loadPrevious()">Load Previous</button>
         <button onclick="resetInputs()">Reset</button>
@@ -163,21 +107,23 @@
 
     function bestMatch(type, value) {
       if (value.toLowerCase().includes('best')) {
-        return type === 'microbe' ? 'Shewanella' :
-               type === 'substrate' ? 'Acetate' : 'mtrC';
+        return type === 'microbe' ? 'Shewanella' : type === 'substrate' ? 'Acetate' : 'mtrC';
       }
       return value;
     }
 
     function parseNaturalLanguage() {
       const input = document.getElementById('naturalLang').value.toLowerCase();
-      if (input.includes('best')) {
-        document.getElementById('inputMicrobe').value = 'Best option';
-        document.getElementById('inputSubstrate').value = 'Best option';
+      if (input.includes('ph increase')) {
+        document.getElementById('inputCOD').value = Math.max(0, parseInt(document.getElementById('inputCOD').value) - 5);
       }
-      if (input.includes('7 day')) document.getElementById('inputTimeScale').value = 168;
-      else if (input.includes('30 day')) document.getElementById('inputTimeScale').value = 720;
-      else if (input.includes('24 hour')) document.getElementById('inputTimeScale').value = 24;
+      if (input.includes('heat increase')) {
+        document.getElementById('inputCE').value = Math.max(0, parseInt(document.getElementById('inputCE').value) - 5);
+      }
+      if (input.includes('humidity decrease')) {
+        document.getElementById('inputCE').value = Math.max(0, parseInt(document.getElementById('inputCE').value) - 3);
+        document.getElementById('inputCOD').value = Math.max(0, parseInt(document.getElementById('inputCOD').value) - 3);
+      }
     }
 
     function simulateMFC() {
@@ -205,6 +151,7 @@
 
       localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
       renderCharts(hours, parseFloat(power), parseFloat(voltage_drop), parseFloat(internal_resistance));
+      switchTab('graphsTab');
     }
 
     function renderCharts(hours, power, voltage_drop, resistance) {
@@ -218,55 +165,39 @@
       if (chartResistance) chartResistance.destroy();
 
       chartPower = new Chart(document.getElementById('chartPower'), {
-        type: 'line',
-        data: { labels, datasets: [{ label: "Power Output (W/m²)", data: powers, borderColor: 'green', fill: false }] },
-        options: { responsive: true }
+        type: 'line', data: { labels, datasets: [{ label: "Power Output (W/m²)", data: powers, borderColor: 'green', fill: false }] }, options: { responsive: true }
       });
       chartVoltage = new Chart(document.getElementById('chartVoltage'), {
-        type: 'line',
-        data: { labels, datasets: [{ label: "Voltage Drop (V)", data: voltages, borderColor: 'red', fill: false }] },
-        options: { responsive: true }
+        type: 'line', data: { labels, datasets: [{ label: "Voltage Drop (V)", data: voltages, borderColor: 'red', fill: false }] }, options: { responsive: true }
       });
       chartResistance = new Chart(document.getElementById('chartResistance'), {
-        type: 'line',
-        data: { labels, datasets: [{ label: "Internal Resistance (Ω)", data: resistances, borderColor: 'blue', fill: false }] },
-        options: { responsive: true }
+        type: 'line', data: { labels, datasets: [{ label: "Internal Resistance (Ω)", data: resistances, borderColor: 'blue', fill: false }] }, options: { responsive: true }
       });
-    }
-
-    function loadPrevious() {
-      const data = JSON.parse(localStorage.getItem('lastSim'));
-      if (!data) return alert("No previous data.");
-      document.getElementById('inputCE').value = data.CE;
-      document.getElementById('inputCOD').value = data.COD;
-      document.getElementById('inputVoltage').value = data.E;
-      document.getElementById('inputTimeScale').value = data.hours;
-      document.getElementById('inputMicrobe').value = data.microbe;
-      document.getElementById('inputSubstrate').value = data.substrate;
-      document.getElementById('inputEnzyme').value = data.enzyme;
-      document.getElementById("numericOutput").innerHTML = `
-        <strong>Power Output:</strong> ${data.power} W/m²<br>
-        <strong>Voltage Drop:</strong> ${data.voltage_drop} V<br>
-        <strong>Internal Resistance:</strong> ${data.internal_resistance} Ω<br>
-        <strong>Microbe:</strong> ${data.microbe}, <strong>Substrate:</strong> ${data.substrate}, <strong>Enzyme:</strong> ${data.enzyme}`;
-      renderCharts(data.hours, parseFloat(data.power), parseFloat(data.voltage_drop), parseFloat(data.internal_resistance));
-      switchTab('graphsTab');
-    }
-
-    function resetInputs() {
-      document.getElementById('inputCE').value = 70;
-      document.getElementById('inputCOD').value = 70;
-      document.getElementById('inputMicrobe').value = '';
-      document.getElementById('inputSubstrate').value = '';
-      document.getElementById('inputEnzyme').value = 'mtrC';
-      document.getElementById('inputVoltage').value = 0.4;
-      document.getElementById('inputTimeScale').value = 24;
-      document.getElementById('naturalLang').value = '';
-      document.getElementById('numericOutput').innerHTML = '';
     }
 
     function exportReport(format) {
-      alert(`Exporting report as ${format.toUpperCase()} (feature in progress)`);
+      const results = document.getElementById("numericOutput").innerText;
+      const canvasPower = document.getElementById('chartPower');
+      const canvasVoltage = document.getElementById('chartVoltage');
+      const canvasResistance = document.getElementById('chartResistance');
+      const powerImg = canvasPower.toDataURL("image/png");
+      const voltageImg = canvasVoltage.toDataURL("image/png");
+      const resistanceImg = canvasResistance.toDataURL("image/png");
+
+      if (format === 'pdf') {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(14);
+        doc.text("MFC Optimizer Report", 10, 10);
+        doc.setFontSize(10);
+        doc.text(results, 10, 20);
+        doc.addImage(powerImg, 'PNG', 10, 40, 180, 40);
+        doc.addImage(voltageImg, 'PNG', 10, 90, 180, 40);
+        doc.addImage(resistanceImg, 'PNG', 10, 140, 180, 40);
+        doc.save("mfc_report.pdf");
+      } else {
+        alert("Word export not yet implemented. Use PDF.");
+      }
     }
   </script>
 </body>
