@@ -1,8 +1,8 @@
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MFC Optimizer Pilot (ML-Enhanced)</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart MFC Optimizer Pilot (AI-Enhanced)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <style>
@@ -51,7 +51,7 @@
     .panel.active {
       display: block;
     }
-    label, select, input, button {
+    label, select, input, button, textarea {
       display: block;
       margin-top: 10px;
       width: 100%;
@@ -67,10 +67,16 @@
       font-size: 12px;
       color: gray;
     }
+    .results-box {
+      margin-top: 15px;
+      background: #edf2f7;
+      padding: 15px;
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
-  <header>MFC Optimizer Pilot (ML-Enhanced)</header>
+  <header>Smart MFC Optimizer Pilot (AI-Enhanced)</header>
 
   <div class="tabs">
     <div class="tab active" onclick="switchTab('inputTab')">Inputs</div>
@@ -79,9 +85,11 @@
   </div>
 
   <div class="container">
-    <!-- Input Tab -->
     <div id="inputTab" class="panel active">
       <div class="input-section">
+        <label for="naturalLang">Describe Your Scenario</label>
+        <textarea id="naturalLang" rows="2" placeholder="e.g. Best performing microbe for maximum power for 7 days"></textarea>
+
         <label for="inputCE">Coulombic Efficiency (%)</label>
         <input id="inputCE" type="number" value="70" min="0" max="100" />
 
@@ -120,19 +128,20 @@
           <option value="720">30 Days</option>
         </select>
 
+        <button onclick="parseNaturalLanguage()">Parse Description</button>
         <button onclick="simulateMFC()">Simulate</button>
         <button onclick="loadPrevious()">Load Previous</button>
         <button onclick="resetInputs()">Reset</button>
       </div>
     </div>
 
-    <!-- Results Tab -->
     <div id="resultsTab" class="panel">
       <h2>Simulation Results</h2>
-      <div id="numericOutput"></div>
+      <div id="numericOutput" class="results-box"></div>
+      <button onclick="exportReport('pdf')">Download as PDF</button>
+      <button onclick="exportReport('docx')">Download as Word</button>
     </div>
 
-    <!-- Graphs Tab -->
     <div id="graphsTab" class="panel">
       <h2>Graphs</h2>
       <canvas id="chartPower"></canvas>
@@ -142,9 +151,6 @@
   </div>
 
   <script>
-    const Faraday = 96485, e_per_g_COD = 0.00834, COD_input = 20;
-    let chartPower, chartVoltage, chartResistance;
-
     function switchTab(id) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -155,10 +161,19 @@
     function bestMatch(type, value) {
       if (value.toLowerCase().includes('best')) {
         return type === 'microbe' ? 'Shewanella' :
-               type === 'substrate' ? 'Acetate' :
-               'mtrC';
+               type === 'substrate' ? 'Acetate' : 'mtrC';
       }
       return value;
+    }
+
+    function parseNaturalLanguage() {
+      const input = document.getElementById('naturalLang').value.toLowerCase();
+      if (input.includes('best')) {
+        document.getElementById('inputMicrobe').value = 'Best option';
+        document.getElementById('inputSubstrate').value = 'Best option';
+      }
+      if (input.includes('7 day')) document.getElementById('inputTimeScale').value = 168;
+      if (input.includes('30 day')) document.getElementById('inputTimeScale').value = 720;
     }
 
     function simulateMFC() {
@@ -170,6 +185,7 @@
       const substrate = bestMatch('substrate', document.getElementById('inputSubstrate').value);
       const enzyme = document.getElementById('inputEnzyme').value;
 
+      const Faraday = 96485, e_per_g_COD = 0.00834, COD_input = 20;
       const COD_removed = COD_input * (COD / 100);
       const mol_e = COD_removed * e_per_g_COD;
       const total_charge = mol_e * Faraday * (CE / 100);
@@ -177,11 +193,11 @@
       const voltage_drop = (E * (1 - CE / 100)).toFixed(3);
       const internal_resistance = ((E - voltage_drop) / (total_charge / (3600 * hours))).toFixed(2);
 
-      document.getElementById("numericOutput").innerHTML =
-        `<strong>Power Output:</strong> ${power} W/m²<br>
-         <strong>Voltage Drop:</strong> ${voltage_drop} V<br>
-         <strong>Internal Resistance:</strong> ${internal_resistance} Ω<br>
-         <strong>Microbe:</strong> ${microbe}, <strong>Substrate:</strong> ${substrate}, <strong>Enzyme:</strong> ${enzyme}`;
+      document.getElementById("numericOutput").innerHTML = `
+        <strong>Power Output:</strong> ${power} W/m²<br>
+        <strong>Voltage Drop:</strong> ${voltage_drop} V<br>
+        <strong>Internal Resistance:</strong> ${internal_resistance} Ω<br>
+        <strong>Microbe:</strong> ${microbe}, <strong>Substrate:</strong> ${substrate}, <strong>Enzyme:</strong> ${enzyme}`;
 
       localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
       renderCharts(hours, parseFloat(power), parseFloat(voltage_drop), parseFloat(internal_resistance));
@@ -198,11 +214,11 @@
       document.getElementById('inputMicrobe').value = data.microbe;
       document.getElementById('inputSubstrate').value = data.substrate;
       document.getElementById('inputEnzyme').value = data.enzyme;
-      document.getElementById("numericOutput").innerHTML =
-        `<strong>Power Output:</strong> ${data.power} W/m²<br>
-         <strong>Voltage Drop:</strong> ${data.voltage_drop} V<br>
-         <strong>Internal Resistance:</strong> ${data.internal_resistance} Ω<br>
-         <strong>Microbe:</strong> ${data.microbe}, <strong>Substrate:</strong> ${data.substrate}, <strong>Enzyme:</strong> ${data.enzyme}`;
+      document.getElementById("numericOutput").innerHTML = `
+        <strong>Power Output:</strong> ${data.power} W/m²<br>
+        <strong>Voltage Drop:</strong> ${data.voltage_drop} V<br>
+        <strong>Internal Resistance:</strong> ${data.internal_resistance} Ω<br>
+        <strong>Microbe:</strong> ${data.microbe}, <strong>Substrate:</strong> ${data.substrate}, <strong>Enzyme:</strong> ${data.enzyme}`;
       renderCharts(data.hours, parseFloat(data.power), parseFloat(data.voltage_drop), parseFloat(data.internal_resistance));
       switchTab('graphsTab');
     }
@@ -215,10 +231,8 @@
       document.getElementById('inputEnzyme').value = 'mtrC';
       document.getElementById('inputVoltage').value = 0.4;
       document.getElementById('inputTimeScale').value = 24;
+      document.getElementById('naturalLang').value = '';
       document.getElementById('numericOutput').innerHTML = '';
-      if (chartPower) chartPower.destroy();
-      if (chartVoltage) chartVoltage.destroy();
-      if (chartResistance) chartResistance.destroy();
     }
 
     function renderCharts(hours, power, voltage_drop, resistance) {
@@ -240,13 +254,18 @@
         }
       });
 
-      if (chartPower) chartPower.destroy();
-      if (chartVoltage) chartVoltage.destroy();
-      if (chartResistance) chartResistance.destroy();
+      if (window.chartPower) chartPower.destroy();
+      if (window.chartVoltage) chartVoltage.destroy();
+      if (window.chartResistance) chartResistance.destroy();
 
       chartPower = makeChart(document.getElementById('chartPower'), "Power Output (W/m²)", powers, 'green');
       chartVoltage = makeChart(document.getElementById('chartVoltage'), "Voltage Drop (V)", voltages, 'red');
       chartResistance = makeChart(document.getElementById('chartResistance'), "Internal Resistance (Ω)", resistances, 'blue');
+    }
+
+    function exportReport(format) {
+      alert(`Exporting report as ${format.toUpperCase()} (feature in progress)`);
+      // You can use libraries like jsPDF or docx.js to implement
     }
   </script>
 </body>
