@@ -162,6 +162,101 @@
   </div>
 
   <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+      document.querySelector(`.tab[onclick*="${tabId}"]`).classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    function simulateMFC() {
+      const CE = parseFloat(document.getElementById('inputCE').value);
+      const COD = parseFloat(document.getElementById('inputCOD').value);
+      const E = parseFloat(document.getElementById('inputVoltage').value);
+      const hours = parseInt(document.getElementById('inputTimeScale').value);
+      const microbe = document.getElementById('inputMicrobe').value;
+      const substrate = document.getElementById('inputSubstrate').value;
+      const enzyme = document.getElementById('inputEnzyme').value;
+
+      const COD_input = 20;
+      const e_per_g_COD = 0.00834;
+      const Faraday = 96485;
+      const COD_removed = COD_input * (COD / 100);
+      const mol_e = COD_removed * e_per_g_COD;
+      const total_charge = mol_e * Faraday * (CE / 100);
+      const power = (total_charge * E / (3600 * hours)).toFixed(3);
+      const voltage_drop = (E * (1 - CE / 100)).toFixed(3);
+      const internal_resistance = ((E - voltage_drop) / (total_charge / (3600 * hours))).toFixed(2);
+
+      document.getElementById("numericOutput").innerHTML =
+        `<strong>Power Output:</strong> ${power} W/m²<br>
+         <strong>Voltage Drop:</strong> ${voltage_drop} V<br>
+         <strong>Internal Resistance:</strong> ${internal_resistance} Ω<br>
+         <strong>Microbe:</strong> ${microbe}, <strong>Substrate:</strong> ${substrate}, <strong>Enzyme:</strong> ${enzyme}`;
+
+      localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
+      renderCharts(hours, power, voltage_drop, internal_resistance);
+      switchTab('resultsTab');
+    }
+
+    function loadPrevious() {
+      const data = JSON.parse(localStorage.getItem('lastSim'));
+      if (!data) return alert("No previous data.");
+      document.getElementById('inputCE').value = data.CE;
+      document.getElementById('inputCOD').value = data.COD;
+      document.getElementById('inputVoltage').value = data.E;
+      document.getElementById('inputTimeScale').value = data.hours;
+      document.getElementById('inputMicrobe').value = data.microbe;
+      document.getElementById('inputSubstrate').value = data.substrate;
+      document.getElementById('inputEnzyme').value = data.enzyme;
+      simulateMFC();
+    }
+
+    function resetInputs() {
+      document.getElementById('inputCE').value = 70;
+      document.getElementById('inputCOD').value = 70;
+      document.getElementById('inputMicrobe').value = '';
+      document.getElementById('inputSubstrate').value = '';
+      document.getElementById('inputEnzyme').value = 'mtrC';
+      document.getElementById('inputVoltage').value = 0.4;
+      document.getElementById('inputTimeScale').value = 24;
+      document.getElementById('numericOutput').innerHTML = '';
+      chartPower?.destroy();
+      chartVoltage?.destroy();
+      chartResistance?.destroy();
+    }
+
+    let chartPower, chartVoltage, chartResistance;
+    function renderCharts(hours, power, voltage_drop, resistance) {
+      const labels = Array.from({ length: hours }, (_, i) => i + 1);
+      const powers = labels.map(() => parseFloat(power));
+      const voltages = labels.map(() => parseFloat(voltage_drop));
+      const resistances = labels.map(() => parseFloat(resistance));
+
+      chartPower?.destroy();
+      chartVoltage?.destroy();
+      chartResistance?.destroy();
+
+      const config = (label, data, color) => ({
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{ label, data, borderColor: color, fill: false }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: 'Time (h)' } },
+            y: { beginAtZero: true }
+          }
+        }
+      });
+
+      chartPower = new Chart(document.getElementById('chartPower'), config("Power Output (W/m²)", powers, 'green'));
+      chartVoltage = new Chart(document.getElementById('chartVoltage'), config("Voltage Drop (V)", voltages, 'red'));
+      chartResistance = new Chart(document.getElementById('chartResistance'), config("Internal Resistance (Ω)", resistances, 'blue'));
+    }
+
     const chatBox = document.getElementById('chatBox');
     async function sendAIQuery() {
       const input = document.getElementById('aiInput').value;
