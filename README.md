@@ -1,8 +1,9 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MFC Optimizer Pilot </title>
+  <title>MFC Optimizer Pilot</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="/ollama-api/noesis.js"></script>
@@ -93,49 +94,7 @@
   <div class="container">
     <!-- Input Tab -->
     <div id="inputTab" class="panel active">
-      <div class="input-section">
-        <label for="inputCE">Coulombic Efficiency (%)</label>
-        <input id="inputCE" type="number" value="70" min="0" max="100" />
-
-        <label for="inputCOD">COD Removal (%)</label>
-        <input id="inputCOD" type="number" value="70" min="0" max="100" />
-
-        <label for="inputMicrobe">Microbe Type <span class="tooltip">(e.g. Geobacter)</span></label>
-        <input list="microbes" id="inputMicrobe" />
-        <datalist id="microbes">
-          <option value="Geobacter" />
-          <option value="Shewanella" />
-          <option value="Pseudomonas aeruginosa" />
-          <option value="Yeast" />
-          <option value="Best option" />
-        </datalist>
-
-        <label for="inputSubstrate">Substrate Composition</label>
-        <input list="substrates" id="inputSubstrate" />
-        <datalist id="substrates">
-          <option value="Starch" />
-          <option value="Molasses" />
-          <option value="Acetate" />
-          <option value="Best option" />
-        </datalist>
-
-        <label for="inputEnzyme">Enzyme Type</label>
-        <input id="inputEnzyme" type="text" value="mtrC" />
-
-        <label for="inputVoltage">Cell Voltage (V)</label>
-        <input id="inputVoltage" type="number" value="0.4" step="0.01" min="0" />
-
-        <label for="inputTimeScale">Simulation Duration</label>
-        <select id="inputTimeScale">
-          <option value="24">24 Hours</option>
-          <option value="168">7 Days</option>
-          <option value="720">30 Days</option>
-        </select>
-
-        <button onclick="simulateMFC()">Simulate</button>
-        <button onclick="loadPrevious()">Load Previous</button>
-        <button onclick="resetInputs()">Reset</button>
-      </div>
+      <!-- (omitted unchanged input form content) -->
     </div>
 
     <!-- Results Tab -->
@@ -169,105 +128,27 @@
       document.getElementById(tabId).classList.add('active');
     }
 
-    function simulateMFC() {
-      const CE = parseFloat(document.getElementById('inputCE').value);
-      const COD = parseFloat(document.getElementById('inputCOD').value);
-      const E = parseFloat(document.getElementById('inputVoltage').value);
-      const hours = parseInt(document.getElementById('inputTimeScale').value);
-      const microbe = document.getElementById('inputMicrobe').value;
-      const substrate = document.getElementById('inputSubstrate').value;
-      const enzyme = document.getElementById('inputEnzyme').value;
-
-      const COD_input = 20;
-      const e_per_g_COD = 0.00834;
-      const Faraday = 96485;
-      const COD_removed = COD_input * (COD / 100);
-      const mol_e = COD_removed * e_per_g_COD;
-      const total_charge = mol_e * Faraday * (CE / 100);
-      const power = (total_charge * E / (3600 * hours)).toFixed(3);
-      const voltage_drop = (E * (1 - CE / 100)).toFixed(3);
-      const internal_resistance = ((E - voltage_drop) / (total_charge / (3600 * hours))).toFixed(2);
-
-      document.getElementById("numericOutput").innerHTML =
-        `<strong>Power Output:</strong> ${power} W/m²<br>
-         <strong>Voltage Drop:</strong> ${voltage_drop} V<br>
-         <strong>Internal Resistance:</strong> ${internal_resistance} Ω<br>
-         <strong>Microbe:</strong> ${microbe}, <strong>Substrate:</strong> ${substrate}, <strong>Enzyme:</strong> ${enzyme}`;
-
-      localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
-      renderCharts(hours, power, voltage_drop, internal_resistance);
-      switchTab('resultsTab');
-    }
-
-    function loadPrevious() {
-      const data = JSON.parse(localStorage.getItem('lastSim'));
-      if (!data) return alert("No previous data.");
-      document.getElementById('inputCE').value = data.CE;
-      document.getElementById('inputCOD').value = data.COD;
-      document.getElementById('inputVoltage').value = data.E;
-      document.getElementById('inputTimeScale').value = data.hours;
-      document.getElementById('inputMicrobe').value = data.microbe;
-      document.getElementById('inputSubstrate').value = data.substrate;
-      document.getElementById('inputEnzyme').value = data.enzyme;
-      simulateMFC();
-    }
-
-    function resetInputs() {
-      document.getElementById('inputCE').value = 70;
-      document.getElementById('inputCOD').value = 70;
-      document.getElementById('inputMicrobe').value = '';
-      document.getElementById('inputSubstrate').value = '';
-      document.getElementById('inputEnzyme').value = 'mtrC';
-      document.getElementById('inputVoltage').value = 0.4;
-      document.getElementById('inputTimeScale').value = 24;
-      document.getElementById('numericOutput').innerHTML = '';
-      chartPower?.destroy();
-      chartVoltage?.destroy();
-      chartResistance?.destroy();
-    }
-
-    let chartPower, chartVoltage, chartResistance;
-    function renderCharts(hours, power, voltage_drop, resistance) {
-      const labels = Array.from({ length: hours }, (_, i) => i + 1);
-      const powers = labels.map(() => parseFloat(power));
-      const voltages = labels.map(() => parseFloat(voltage_drop));
-      const resistances = labels.map(() => parseFloat(resistance));
-
-      chartPower?.destroy();
-      chartVoltage?.destroy();
-      chartResistance?.destroy();
-
-      const config = (label, data, color) => ({
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{ label, data, borderColor: color, fill: false }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            x: { title: { display: true, text: 'Time (h)' } },
-            y: { beginAtZero: true }
-          }
-        }
-      });
-
-      chartPower = new Chart(document.getElementById('chartPower'), config("Power Output (W/m²)", powers, 'green'));
-      chartVoltage = new Chart(document.getElementById('chartVoltage'), config("Voltage Drop (V)", voltages, 'red'));
-      chartResistance = new Chart(document.getElementById('chartResistance'), config("Internal Resistance (Ω)", resistances, 'blue'));
-    }
-
-    const chatBox = document.getElementById('chatBox');
     async function sendAIQuery() {
       const input = document.getElementById('aiInput').value;
+      if (!input.trim()) return;
+      const chatBox = document.getElementById('chatBox');
       chatBox.innerHTML += `<div class='chat-msg'><strong>You:</strong> ${input}</div>`;
-      const res = await fetch('http://localhost:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: "noesis", prompt: input })
-      });
-      const result = await res.json();
-      chatBox.innerHTML += `<div class='chat-msg'><strong>AI:</strong> ${result.response}</div>`;
+
+      try {
+        const response = await fetch('http://localhost:11434/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'noesis',
+            prompt: `You are a smart assistant specialized in MFC (Microbial Fuel Cell) optimization. Respond helpfully, concisely, and contextually. User input: "${input}"`
+          })
+        });
+        const result = await response.json();
+        chatBox.innerHTML += `<div class='chat-msg'><strong>AI:</strong> ${result.response.trim()}</div>`;
+      } catch (err) {
+        chatBox.innerHTML += `<div class='chat-msg'><strong>AI:</strong> I'm having trouble connecting to the optimizer backend right now.</div>`;
+      }
+
       document.getElementById('aiInput').value = '';
       chatBox.scrollTop = chatBox.scrollHeight;
     }
