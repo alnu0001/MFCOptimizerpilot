@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -94,7 +93,49 @@
   <div class="container">
     <!-- Input Tab -->
     <div id="inputTab" class="panel active">
-      <!-- (omitted unchanged input form content) -->
+      <div class="input-section">
+  <label for="inputCE">Coulombic Efficiency (%)</label>
+  <input id="inputCE" type="number" value="70" min="0" max="100" />
+
+  <label for="inputCOD">COD Removal (%)</label>
+  <input id="inputCOD" type="number" value="70" min="0" max="100" />
+
+  <label for="inputMicrobe">Microbe Type <span class="tooltip">(e.g. Geobacter)</span></label>
+  <input list="microbes" id="inputMicrobe" />
+  <datalist id="microbes">
+    <option value="Geobacter" />
+    <option value="Shewanella" />
+    <option value="Pseudomonas aeruginosa" />
+    <option value="Yeast" />
+    <option value="Best option" />
+  </datalist>
+
+  <label for="inputSubstrate">Substrate Composition</label>
+  <input list="substrates" id="inputSubstrate" />
+  <datalist id="substrates">
+    <option value="Starch" />
+    <option value="Molasses" />
+    <option value="Acetate" />
+    <option value="Best option" />
+  </datalist>
+
+  <label for="inputEnzyme">Enzyme Type</label>
+  <input id="inputEnzyme" type="text" value="mtrC" />
+
+  <label for="inputVoltage">Cell Voltage (V)</label>
+  <input id="inputVoltage" type="number" value="0.4" step="0.01" min="0" />
+
+  <label for="inputTimeScale">Simulation Duration</label>
+  <select id="inputTimeScale">
+    <option value="24">24 Hours</option>
+    <option value="168">7 Days</option>
+    <option value="720">30 Days</option>
+  </select>
+
+  <button onclick="simulateMFC()">Simulate</button>
+  <button onclick="loadPrevious()">Load Previous</button>
+  <button onclick="resetInputs()">Reset</button>
+</div>
     </div>
 
     <!-- Results Tab -->
@@ -134,19 +175,28 @@
       const chatBox = document.getElementById('chatBox');
       chatBox.innerHTML += `<div class='chat-msg'><strong>You:</strong> ${input}</div>`;
 
+      const CE = document.getElementById('inputCE')?.value || 'unknown';
+      const COD = document.getElementById('inputCOD')?.value || 'unknown';
+      const E = document.getElementById('inputVoltage')?.value || 'unknown';
+      const microbe = document.getElementById('inputMicrobe')?.value || 'unknown';
+      const substrate = document.getElementById('inputSubstrate')?.value || 'unknown';
+      const enzyme = document.getElementById('inputEnzyme')?.value || 'unknown';
+      const hours = document.getElementById('inputTimeScale')?.value || 'unknown';
+
+      const contextPrompt = `You are a smart assistant specialized in MFC (Microbial Fuel Cell) optimization. You must respond helpfully, concisely, and contextually. Here are the current simulation parameters:
+Coulombic Efficiency: ${CE}%, COD Removal: ${COD}%, Voltage: ${E}V, Microbe: ${microbe}, Substrate: ${substrate}, Enzyme: ${enzyme}, Duration: ${hours}h.
+User input: "${input}"`;
+
       try {
         const response = await fetch('http://localhost:11434/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'noesis',
-            prompt: `You are a smart assistant specialized in MFC (Microbial Fuel Cell) optimization. Respond helpfully, concisely, and contextually. User input: "${input}"`
-          })
+          body: JSON.stringify({ model: 'noesis', prompt: contextPrompt })
         });
         const result = await response.json();
         chatBox.innerHTML += `<div class='chat-msg'><strong>AI:</strong> ${result.response.trim()}</div>`;
       } catch (err) {
-        chatBox.innerHTML += `<div class='chat-msg'><strong>AI:</strong> I'm having trouble connecting to the optimizer backend right now.</div>`;
+        chatBox.innerHTML += `<div class='chat-msg'><strong>AI:</strong> Sorry, I couldn't reach the local optimizer server. Please ensure it is running.</div>`;
       }
 
       document.getElementById('aiInput').value = '';
