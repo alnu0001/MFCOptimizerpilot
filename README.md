@@ -2,8 +2,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MFC Optimizer Pilot</title>
+  <title>MFC Optimizer Pilot (LLM-Enhanced)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="/ollama-api/noesis.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -11,11 +13,6 @@
       padding: 0;
       background-color: #f9f9f9;
       color: #333;
-      transition: background-color 0.3s, color 0.3s;
-    }
-    body.dark {
-      background-color: #1a202c;
-      color: #f1f1f1;
     }
     header {
       background-color: #1a202c;
@@ -28,7 +25,6 @@
       display: flex;
       justify-content: center;
       margin-top: 10px;
-      flex-wrap: wrap;
     }
     .tab {
       margin: 0 10px;
@@ -49,14 +45,9 @@
     .panel {
       display: none;
       background: white;
-      color: #000;
       padding: 20px;
       border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-    body.dark .panel {
-      background: #2d3748;
-      color: #f1f1f1;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
     .panel.active {
       display: block;
@@ -73,94 +64,212 @@
     .input-section {
       margin-bottom: 20px;
     }
+    .tooltip {
+      font-size: 12px;
+      color: gray;
+    }
+    .chat-container {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+      background: #f1f1f1;
+    }
+    .chat-msg {
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
   <header>MFC Optimizer Pilot (LLM-Enhanced)</header>
+
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('inputTab', this)">Inputs</div>
-    <div class="tab" onclick="switchTab('resultsTab', this)">Results</div>
-    <div class="tab" onclick="switchTab('graphsTab', this)">Graphs</div>
-    <div class="tab" onclick="toggleDarkMode()">Dark Mode</div>
+    <div class="tab active" onclick="switchTab('inputTab')">Inputs</div>
+    <div class="tab" onclick="switchTab('resultsTab')">Results</div>
+    <div class="tab" onclick="switchTab('graphsTab')">Graphs</div>
+    <div class="tab" onclick="switchTab('aiTab')">AI Assistant</div>
   </div>
+
   <div class="container">
+    <!-- Input Tab -->
     <div id="inputTab" class="panel active">
       <div class="input-section">
-        <label for="inputTime">Time (s)</label>
-        <input id="inputTime" type="number" value="3600" min="0" />
+        <label for="inputCE">Coulombic Efficiency (%)</label>
+        <input id="inputCE" type="number" value="70" min="0" max="100" />
 
-        <label for="inputSubstrate">Substrate Concentration (mg/L)</label>
-        <input id="inputSubstrate" type="number" value="500" min="0" />
+        <label for="inputCOD">COD Removal (%)</label>
+        <input id="inputCOD" type="number" value="70" min="0" max="100" />
 
-        <label for="inputRint">Internal Resistance (Ω)</label>
-        <input id="inputRint" type="number" value="50" min="0" />
-
-        <label for="inputRext">External Resistance (Ω)</label>
-        <input id="inputRext" type="number" value="100" min="0" />
-
-        <label for="inputTemp">Temperature (°C)</label>
-        <input id="inputTemp" type="number" value="30" min="0" />
-
-        <label for="inputPH">pH Level</label>
-        <input id="inputPH" type="number" step="0.1" value="7.0" min="0" max="14" />
-
-        <label for="inputArea">Electrode Surface Area (cm²)</label>
-        <input id="inputArea" type="number" value="25" min="0" />
-
-        <label for="inputDistance">Distance Between Electrodes (cm)</label>
-        <input id="inputDistance" type="number" value="2" min="0" />
-
-        <label for="inputMicrobe">Microbe Type</label>
+        <label for="inputMicrobe">Microbe Type <span class="tooltip">(e.g. Geobacter)</span></label>
         <input list="microbes" id="inputMicrobe" />
         <datalist id="microbes">
           <option value="Geobacter" />
           <option value="Shewanella" />
           <option value="Pseudomonas aeruginosa" />
-          <option value="Desulfuromonas" />
+          <option value="Yeast" />
+          <option value="Best option" />
+        </datalist>
+
+        <label for="inputSubstrate">Substrate Composition</label>
+        <input list="substrates" id="inputSubstrate" />
+        <datalist id="substrates">
+          <option value="Starch" />
+          <option value="Molasses" />
+          <option value="Acetate" />
+          <option value="Best option" />
         </datalist>
 
         <label for="inputEnzyme">Enzyme Type</label>
-        <input id="inputEnzyme" type="text" value="OmcZ" />
+        <input id="inputEnzyme" type="text" value="mtrC" />
 
-        <label for="inputVoltage">Voltage (V)</label>
+        <label for="inputVoltage">Cell Voltage (V)</label>
         <input id="inputVoltage" type="number" value="0.4" step="0.01" min="0" />
 
-        <label for="inputCurrent">Current (A)</label>
-        <input id="inputCurrent" type="number" value="0.01" step="0.001" min="0" />
-
-        <label for="inputCOD">COD Removal (%)</label>
-        <input id="inputCOD" type="number" value="70" min="0" max="100" />
+        <label for="inputTimeScale">Simulation Duration</label>
+        <select id="inputTimeScale">
+          <option value="24">24 Hours</option>
+          <option value="168">7 Days</option>
+          <option value="720">30 Days</option>
+        </select>
 
         <button onclick="simulateMFC()">Simulate</button>
         <button onclick="loadPrevious()">Load Previous</button>
-        <button onclick="clearHistory()">Clear History</button>
-        <button onclick="compareWithPrevious()">Compare with Previous</button>
+        <button onclick="resetInputs()">Reset</button>
       </div>
     </div>
+
+    <!-- Results Tab -->
     <div id="resultsTab" class="panel">
       <h2>Simulation Results</h2>
       <div id="numericOutput"></div>
     </div>
+
+    <!-- Graphs Tab -->
     <div id="graphsTab" class="panel">
-      <h2>Simulation Graphs</h2>
+      <h2>Graphs</h2>
       <canvas id="chartPower"></canvas>
       <canvas id="chartVoltage"></canvas>
       <canvas id="chartResistance"></canvas>
-      <canvas id="chartTotalResistance"></canvas>
-      <canvas id="chartVoltageCurrent"></canvas>
+    </div>
+
+    <!-- AI Assistant Tab -->
+    <div id="aiTab" class="panel">
+      <h2>AI Optimization Assistant</h2>
+      <div class="chat-container" id="chatBox"></div>
+      <textarea id="aiInput" placeholder="Ask the optimizer anything..." rows="3"></textarea>
+      <button onclick="sendAIQuery()">Send</button>
     </div>
   </div>
 
   <script>
-    function switchTab(tabId, element) {
+    function switchTab(tabId) {
       document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
-      element.classList.add('active');
+      document.querySelector(`.tab[onclick*="${tabId}"]`).classList.add('active');
       document.getElementById(tabId).classList.add('active');
     }
 
-    function toggleDarkMode() {
-      document.body.classList.toggle('dark');
+    function simulateMFC() {
+      const CE = parseFloat(document.getElementById('inputCE').value);
+      const COD = parseFloat(document.getElementById('inputCOD').value);
+      const E = parseFloat(document.getElementById('inputVoltage').value);
+      const hours = parseInt(document.getElementById('inputTimeScale').value);
+      const microbe = document.getElementById('inputMicrobe').value;
+      const substrate = document.getElementById('inputSubstrate').value;
+      const enzyme = document.getElementById('inputEnzyme').value;
+
+      const COD_input = 20;
+      const e_per_g_COD = 0.00834;
+      const Faraday = 96485;
+      const COD_removed = COD_input * (COD / 100);
+      const mol_e = COD_removed * e_per_g_COD;
+      const total_charge = mol_e * Faraday * (CE / 100);
+      const power = (total_charge * E / (3600 * hours)).toFixed(3);
+      const voltage_drop = (E * (1 - CE / 100)).toFixed(3);
+      const internal_resistance = ((E - voltage_drop) / (total_charge / (3600 * hours))).toFixed(2);
+
+      document.getElementById("numericOutput").innerHTML =
+        `<strong>Power Output:</strong> ${power} W/m²<br>
+         <strong>Voltage Drop:</strong> ${voltage_drop} V<br>
+         <strong>Internal Resistance:</strong> ${internal_resistance} Ω<br>
+         <strong>Microbe:</strong> ${microbe}, <strong>Substrate:</strong> ${substrate}, <strong>Enzyme:</strong> ${enzyme}`;
+
+      localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
+      renderCharts(hours, power, voltage_drop, internal_resistance);
+      switchTab('resultsTab');
+    }
+
+    function loadPrevious() {
+      const data = JSON.parse(localStorage.getItem('lastSim'));
+      if (!data) return alert("No previous data.");
+      document.getElementById('inputCE').value = data.CE;
+      document.getElementById('inputCOD').value = data.COD;
+      document.getElementById('inputVoltage').value = data.E;
+      document.getElementById('inputTimeScale').value = data.hours;
+      document.getElementById('inputMicrobe').value = data.microbe;
+      document.getElementById('inputSubstrate').value = data.substrate;
+      document.getElementById('inputEnzyme').value = data.enzyme;
+      simulateMFC();
+    }
+
+    function resetInputs() {
+      document.getElementById('inputCE').value = 70;
+      document.getElementById('inputCOD').value = 70;
+      document.getElementById('inputMicrobe').value = '';
+      document.getElementById('inputSubstrate').value = '';
+      document.getElementById('inputEnzyme').value = 'mtrC';
+      document.getElementById('inputVoltage').value = 0.4;
+      document.getElementById('inputTimeScale').value = 24;
+      document.getElementById('numericOutput').innerHTML = '';
+      chartPower?.destroy();
+      chartVoltage?.destroy();
+      chartResistance?.destroy();
+    }
+
+    let chartPower, chartVoltage, chartResistance;
+    function renderCharts(hours, power, voltage_drop, resistance) {
+      const labels = Array.from({ length: hours }, (_, i) => i + 1);
+      const powers = labels.map(() => parseFloat(power));
+      const voltages = labels.map(() => parseFloat(voltage_drop));
+      const resistances = labels.map(() => parseFloat(resistance));
+
+      chartPower?.destroy();
+      chartVoltage?.destroy();
+      chartResistance?.destroy();
+
+      const config = (label, data, color) => ({
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{ label, data, borderColor: color, fill: false }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: 'Time (h)' } },
+            y: { beginAtZero: true }
+          }
+        }
+      });
+
+      chartPower = new Chart(document.getElementById('chartPower'), config("Power Output (W/m²)", powers, 'green'));
+      chartVoltage = new Chart(document.getElementById('chartVoltage'), config("Voltage Drop (V)", voltages, 'red'));
+      chartResistance = new Chart(document.getElementById('chartResistance'), config("Internal Resistance (Ω)", resistances, 'blue'));
+    }
+
+    const chatBox = document.getElementById('chatBox');
+    async function sendAIQuery() {
+      const input = document.getElementById('aiInput').value;
+      chatBox.innerHTML += `<div class='chat-msg'><strong>You:</strong> ${input}</div>`;
+      const res = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: "noesis", prompt: input })
+      });
+      const result = await res.json();
+      chatBox.innerHTML += `<div class='chat-msg'><strong>AI:</strong> ${result.response}</div>`;
+      document.getElementById('aiInput').value = '';
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
   </script>
 </body>
