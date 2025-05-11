@@ -11,6 +11,11 @@
       padding: 0;
       background-color: #f9f9f9;
       color: #333;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    body.dark {
+      background-color: #1a202c;
+      color: #f1f1f1;
     }
     header {
       background-color: #1a202c;
@@ -23,6 +28,7 @@
       display: flex;
       justify-content: center;
       margin-top: 10px;
+      flex-wrap: wrap;
     }
     .tab {
       margin: 0 10px;
@@ -43,9 +49,14 @@
     .panel {
       display: none;
       background: white;
+      color: #000;
       padding: 20px;
       border-radius: 8px;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    body.dark .panel {
+      background: #2d3748;
+      color: #f1f1f1;
     }
     .panel.active {
       display: block;
@@ -62,20 +73,6 @@
     .input-section {
       margin-bottom: 20px;
     }
-    .tooltip {
-      font-size: 12px;
-      color: gray;
-    }
-    .chat-container {
-      max-height: 300px;
-      overflow-y: auto;
-      border: 1px solid #ddd;
-      padding: 10px;
-      background: #f1f1f1;
-    }
-    .chat-msg {
-      margin-bottom: 10px;
-    }
   </style>
 </head>
 <body>
@@ -83,12 +80,53 @@
   <div class="tabs">
     <div class="tab active" onclick="switchTab('inputTab', this)">Inputs</div>
     <div class="tab" onclick="switchTab('resultsTab', this)">Results</div>
+    <div class="tab" onclick="switchTab('graphsTab', this)">Graphs</div>
+    <div class="tab" onclick="toggleDarkMode()">Dark Mode</div>
   </div>
   <div class="container">
     <div id="inputTab" class="panel active">
       <div class="input-section">
-        <label for="inputCE">Coulombic Efficiency (%)</label>
-        <input id="inputCE" type="number" value="70" min="0" max="100" />
+        <label for="inputTime">Time (s)</label>
+        <input id="inputTime" type="number" value="3600" min="0" />
+
+        <label for="inputSubstrate">Substrate Concentration (mg/L)</label>
+        <input id="inputSubstrate" type="number" value="500" min="0" />
+
+        <label for="inputRint">Internal Resistance (Ω)</label>
+        <input id="inputRint" type="number" value="50" min="0" />
+
+        <label for="inputRext">External Resistance (Ω)</label>
+        <input id="inputRext" type="number" value="100" min="0" />
+
+        <label for="inputTemp">Temperature (°C)</label>
+        <input id="inputTemp" type="number" value="30" min="0" />
+
+        <label for="inputPH">pH Level</label>
+        <input id="inputPH" type="number" step="0.1" value="7.0" min="0" max="14" />
+
+        <label for="inputArea">Electrode Surface Area (cm²)</label>
+        <input id="inputArea" type="number" value="25" min="0" />
+
+        <label for="inputDistance">Distance Between Electrodes (cm)</label>
+        <input id="inputDistance" type="number" value="2" min="0" />
+
+        <label for="inputMicrobe">Microbe Type</label>
+        <input list="microbes" id="inputMicrobe" />
+        <datalist id="microbes">
+          <option value="Geobacter" />
+          <option value="Shewanella" />
+          <option value="Pseudomonas aeruginosa" />
+          <option value="Desulfuromonas" />
+        </datalist>
+
+        <label for="inputEnzyme">Enzyme Type</label>
+        <input id="inputEnzyme" type="text" value="OmcZ" />
+
+        <label for="inputVoltage">Voltage (V)</label>
+        <input id="inputVoltage" type="number" value="0.4" step="0.01" min="0" />
+
+        <label for="inputCurrent">Current (A)</label>
+        <input id="inputCurrent" type="number" value="0.01" step="0.001" min="0" />
 
         <label for="inputCOD">COD Removal (%)</label>
         <input id="inputCOD" type="number" value="70" min="0" max="100" />
@@ -103,6 +141,14 @@
       <h2>Simulation Results</h2>
       <div id="numericOutput"></div>
     </div>
+    <div id="graphsTab" class="panel">
+      <h2>Simulation Graphs</h2>
+      <canvas id="chartPower"></canvas>
+      <canvas id="chartVoltage"></canvas>
+      <canvas id="chartResistance"></canvas>
+      <canvas id="chartTotalResistance"></canvas>
+      <canvas id="chartVoltageCurrent"></canvas>
+    </div>
   </div>
 
   <script>
@@ -113,52 +159,8 @@
       document.getElementById(tabId).classList.add('active');
     }
 
-    function simulateMFC() {
-      const CE = parseFloat(document.getElementById('inputCE').value);
-      const COD = parseFloat(document.getElementById('inputCOD').value);
-      const E = 0.4;
-      const COD_input = 20;
-      const e_per_g_COD = 0.00834;
-      const Faraday = 96485;
-
-      const COD_removed = COD_input * (COD / 100);
-      const mol_e = COD_removed * e_per_g_COD;
-      const total_charge = mol_e * Faraday * (CE / 100);
-      const power = (total_charge * E / 3600).toFixed(3);
-
-      const output = `<strong>Power Output:</strong> ${power} W/m²`;
-      document.getElementById("numericOutput").innerHTML = output;
-
-      const entry = {
-        CE, COD, power: parseFloat(power), timestamp: new Date().toISOString()
-      };
-      const history = JSON.parse(localStorage.getItem('mfcHistory') || '[]');
-      history.push(entry);
-      localStorage.setItem('mfcHistory', JSON.stringify(history));
-    }
-
-    function loadPrevious() {
-      const history = JSON.parse(localStorage.getItem('mfcHistory') || '[]');
-      if (history.length === 0) return alert('No history found.');
-      const prev = history[history.length - 1];
-      document.getElementById('inputCE').value = prev.CE;
-      document.getElementById('inputCOD').value = prev.COD;
-      alert('Previous simulation loaded.');
-    }
-
-    function clearHistory() {
-      localStorage.removeItem('mfcHistory');
-      alert('History cleared.');
-      document.getElementById("numericOutput").innerHTML = '';
-    }
-
-    function compareWithPrevious() {
-      const history = JSON.parse(localStorage.getItem('mfcHistory') || '[]');
-      if (history.length < 2) return alert('Need at least two entries to compare.');
-      const last = history[history.length - 1];
-      const secondLast = history[history.length - 2];
-      const delta = (last.power - secondLast.power).toFixed(3);
-      alert(`Latest Power: ${last.power} W/m²\nPrevious: ${secondLast.power} W/m²\nChange: ${delta} W/m²`);
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark');
     }
   </script>
 </body>
