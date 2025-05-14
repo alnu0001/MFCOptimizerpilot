@@ -2,19 +2,19 @@
 < head >
   < meta charset = "UTF-8" />
   < meta name = "viewport" content = "width=device-width, initial-scale=1.0" />
-  < title > MFC Optimizer Pilot</title>
-  <script src = "https://cdn.jsdelivr.net/npm/chart.js" ></ script >
-  < script src= "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs" ></ script >
-  < script src= "/ollama-api/noesis.js" ></ script >
+  < title > MFC Optimizer Pilot(LLM-Enhanced)</ title >
+  < script src = "https://cdn.jsdelivr.net/npm/chart.js" ></ script >
+  < script src = "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs" ></ script >
+  < script src = "/ollama-api/noesis.js" ></ script >
   < style >
     body {
-      font-family: 'Segoe UI', sans - serif;
+    font - family: 'Segoe UI', sans - serif;
 margin: 0;
 padding: 0;
-background - color: #f9f9f9;
+    background - color: #f9f9f9;
       color: #333;
     }
-    header {
+header {
       background-color: #1a202c;
       color: white;
 padding: 15px;
@@ -81,9 +81,9 @@ background: #f1f1f1;
   </ style >
 </ head >
 < body >
-  < header > MFC Optimizer Pilot</header>
+  < header > MFC Optimizer Pilot(LLM-Enhanced)</ header >
 
-  <div class= "tabs" >
+  < div class= "tabs" >
     < div class= "tab active" onclick = "switchTab('inputTab')" > Inputs </ div >
     < div class= "tab" onclick = "switchTab('resultsTab')" > Results </ div >
     < div class= "tab" onclick = "switchTab('graphsTab')" > Graphs </ div >
@@ -91,6 +91,7 @@ background: #f1f1f1;
   </ div >
 
   < div class= "container" >
+    < !--Input Tab-- >
     < div id = "inputTab" class= "panel active" >
       < div class= "input-section" >
         < label for= "inputCE" > Coulombic Efficiency(%) </ label >
@@ -137,11 +138,13 @@ background: #f1f1f1;
       </ div >
     </ div >
 
+    < !--Results Tab-- >
     < div id = "resultsTab" class= "panel" >
       < h2 > Simulation Results </ h2 >
       < div id = "numericOutput" ></ div >
     </ div >
 
+    < !--Graphs Tab-- >
     < div id = "graphsTab" class= "panel" >
       < h2 > Graphs </ h2 >
       < canvas id = "chartPower" ></ canvas >
@@ -149,7 +152,8 @@ background: #f1f1f1;
       < canvas id = "chartResistance" ></ canvas >
     </ div >
 
-    < div id = "aiTab" class= "panel" >
+    < !--AI Assistant Tab -->
+    <div id="aiTab" class= "panel" >
       < h2 > AI Optimization Assistant</h2>
       <div class= "chat-container" id = "chatBox" ></ div >
       < textarea id = "aiInput" placeholder = "Ask the optimizer anything..." rows = "3" ></ textarea >
@@ -157,17 +161,8 @@ background: #f1f1f1;
     </ div >
   </ div >
 
-< script >
-const pmsTable = [
-  { PMS: "DC-DC voltage booster circuit", MFCReactor: "Two-chamber MFCs (1.2 L)", Voltage: "0.2–0.4 V", Configuration: "3 MFCs in parallel", Boosted: "> 3 V" },
-  { PMS: "Blocking oscillator booster circuit", MFCReactor: "Two-chamber MFCs (120 mL)", Voltage: "0.837 V", Configuration: "3 MFCs in series", Boosted: "~3 V" },
-  { PMS: "DC–DC voltage Boost converter", MFCReactor: "Two-chamber MFCs (50 mL)", Voltage: "< 0.2 V", Configuration: "Single or 4 parallel MFCs", Boosted: "3.3 V" },
-  { PMS: "Capacitor-based DC-DC converter", MFCReactor: "Air–cathode MFC (27 mL)", Voltage: "~0.5 V", Configuration: "4 parallel MFCs", Boosted: "2.5 V" },
-  { PMS: "Capacitor-based DC-DC converter", MFCReactor: "Sediment MFC", Voltage: "0.4 V", Configuration: "Single MFC", Boosted: "3.3 V" }
-];
-
-function switchTab(tabId)
-{
+  < script >
+    function switchTab(tabId) {
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
     document.querySelector(`.tab[onclick *= "${tabId}"]`).classList.add('active');
@@ -194,32 +189,22 @@ function simulateMFC()
     const voltage_drop = (E * (1 - CE / 100)).toFixed(3);
     const internal_resistance = ((E - voltage_drop) / (total_charge / (3600 * hours))).toFixed(2);
 
-    let matchedPMS = pmsTable.find(row => {
-        let[low, high] = row.Voltage.replace(/ [^\d.–] / g, '').split(/ [–-] /).map(parseFloat);
-        if (row.Voltage.includes('<')) return E < low;
-        if (row.Voltage.includes('>')) return E > low;
-        if (!isNaN(low) && !isNaN(high)) return E >= low && E <= high;
-        return false;
-    });
-    let pmsNote = matchedPMS
-      ? `< br >< strong > Recommended PMS:</ strong > ${ matchedPMS.PMS} (${ matchedPMS.Configuration}, Boosts to ${ matchedPMS.Boosted})`
-    : `< br >< em > No PMS match found for input voltage.</em>`;
+    document.getElementById("numericOutput").innerHTML =
+        `< strong > Power Output:</ strong > ${ power}
+    W / m²< br >
 
-document.getElementById("numericOutput").innerHTML =
-    `< strong > Power Output:</ strong > ${ power}
-W / m²< br >
      < strong > Voltage Drop:</ strong > ${ voltage_drop}
-V<br>
+    V<br>
      < strong > Internal Resistance:</ strong > ${ internal_resistance}
-Ω<br>
-     < strong > Microbe:</ strong > ${ microbe}, < strong > Substrate:</ strong > ${ substrate}, < strong > Enzyme:</ strong > ${ enzyme}${ pmsNote}`;
+    Ω<br>
+     < strong > Microbe:</ strong > ${ microbe}, < strong > Substrate:</ strong > ${ substrate}, < strong > Enzyme:</ strong > ${ enzyme}`;
 
 localStorage.setItem('lastSim', JSON.stringify({ CE, COD, E, hours, microbe, substrate, enzyme, power, voltage_drop, internal_resistance }));
 renderCharts(hours, power, voltage_drop, internal_resistance);
 switchTab('resultsTab');
-}
+    }
 
-function loadPrevious()
+    function loadPrevious()
 {
     const data = JSON.parse(localStorage.getItem('lastSim'));
     if (!data) return alert("No previous data.");
@@ -262,8 +247,20 @@ function renderCharts(hours, power, voltage_drop, resistance)
 
     const config = (label, data, color) => ({
     type: 'line',
-    data: { labels, datasets: [{ label, data, borderColor: color, fill: false }] },
-    options: { responsive: true, scales: { x: { title: { display: true, text: 'Time (h)' } }, y: { beginAtZero: true } } }
+        data:
+        {
+            labels,
+          datasets: [{ label, data, borderColor: color, fill: false }]
+        },
+        options:
+        {
+        responsive: true,
+          scales:
+            {
+            x: { title: { display: true, text: 'Time (h)' } },
+            y: { beginAtZero: true }
+            }
+        }
     });
 
     chartPower = new Chart(document.getElementById('chartPower'), config("Power Output (W/m²)", powers, 'green'));
@@ -280,14 +277,13 @@ const res = await fetch('http://localhost:11434/api/generate', {
 
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: "noesis", prompt: input })
-  });
+        body: JSON.stringify({ model: "noesis", prompt: input })
+      });
 const result = await res.json();
 chatBox.innerHTML += `< div class= 'chat-msg' >< strong > AI:</ strong > ${ result.response}</ div >`;
 document.getElementById('aiInput').value = '';
 chatBox.scrollTop = chatBox.scrollHeight;
-}
-</ script >
-
+    }
+  </ script >
 </ body >
 </ html >
