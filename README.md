@@ -2,19 +2,19 @@
 < head >
   < meta charset = "UTF-8" />
   < meta name = "viewport" content = "width=device-width, initial-scale=1.0" />
-  < title > MFC Optimizer Pilot(LLM-Enhanced)</ title >
-  < script src = "https://cdn.jsdelivr.net/npm/chart.js" ></ script >
-  < script src = "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs" ></ script >
-  < script src = "/ollama-api/noesis.js" ></ script >
+  < title > MFC Optimizer Pilot</title>
+  <script src = "https://cdn.jsdelivr.net/npm/chart.js" ></ script >
+  < script src= "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs" ></ script >
+  < script src= "/ollama-api/noesis.js" ></ script >
   < style >
     body {
-    font - family: 'Segoe UI', sans - serif;
+      font-family: 'Segoe UI', sans - serif;
 margin: 0;
 padding: 0;
-    background - color: #f9f9f9;
+background - color: #f9f9f9;
       color: #333;
     }
-header {
+    header {
       background-color: #1a202c;
       color: white;
 padding: 15px;
