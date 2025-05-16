@@ -90,7 +90,6 @@
     <div class="tab" onclick="switchTab('aiTab')">AI Assistant</div>
   </div>
   <div class="container">
-    <!-- Input Tab -->
     <div id="inputTab" class="panel active">
       <div class="input-section">
         <label for="inputCE">Coulombic Efficiency (%)</label>
@@ -129,19 +128,16 @@
         <button onclick="resetInputs()">Reset</button>
       </div>
     </div>
-    <!-- Results Tab -->
     <div id="resultsTab" class="panel">
       <h2>Simulation Results</h2>
       <div id="numericOutput"></div>
     </div>
-    <!-- Graphs Tab -->
     <div id="graphsTab" class="panel">
       <h2>Graphs</h2>
       <canvas id="chartPower"></canvas>
       <canvas id="chartVoltage"></canvas>
       <canvas id="chartResistance"></canvas>
     </div>
-    <!-- AI Assistant Tab -->
     <div id="aiTab" class="panel">
       <h2>AI Optimization Assistant</h2>
       <div class="chat-container" id="chatBox"></div>
